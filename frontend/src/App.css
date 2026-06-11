@@ -1,0 +1,51 @@
+.app {
+  min-height: 100vh;
+  background:
+    radial-gradient(ellipse 80% 50% at 50% -20%, rgba(59, 130, 246, 0.15), transparent),
+    var(--bg);
+}
+
+.app-header {
+  padding: 3rem 1.5rem 2rem;
+  text-align: center;
+}
+
+.header-content {
+  max-width: 640px;
+  margin: 0 auto;
+}
+
+.app-header h1 {
+  margin: 0 0 0.75rem;
+  font-size: 2.25rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.app-header p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 1.1rem;
+}
+
+.app-main {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 0 1.5rem 4rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.error-banner {
+  padding: 1rem 1.25rem;
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  border-radius: var(--radius);
+  color: #fca5a5;
+  font-size: 0.95rem;
+}
+
+.error-banner strong {
+  color: #f87171;
+}

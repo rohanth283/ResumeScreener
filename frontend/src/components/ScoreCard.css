@@ -1,0 +1,145 @@
+.score-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.75rem;
+  animation: fadeIn 0.35s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.score-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.score-header h2 {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 600;
+}
+
+.score-badge {
+  display: flex;
+  align-items: baseline;
+  gap: 0.15rem;
+  padding: 0.5rem 1rem;
+  border-radius: 999px;
+  font-weight: 700;
+}
+
+.score-badge--high {
+  background: rgba(34, 197, 94, 0.15);
+  color: var(--success);
+}
+
+.score-badge--medium {
+  background: rgba(245, 158, 11, 0.15);
+  color: var(--warning);
+}
+
+.score-badge--low {
+  background: rgba(239, 68, 68, 0.15);
+  color: var(--danger);
+}
+
+.score-value {
+  font-size: 1.75rem;
+  line-height: 1;
+}
+
+.score-label {
+  font-size: 0.9rem;
+  font-weight: 500;
+  opacity: 0.8;
+}
+
+.score-bar-container {
+  height: 8px;
+  background: var(--surface-elevated);
+  border-radius: 999px;
+  overflow: hidden;
+  margin-bottom: 1.5rem;
+}
+
+.score-bar {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.6s ease;
+}
+
+.score-bar--high {
+  background: var(--success);
+}
+
+.score-bar--medium {
+  background: var(--warning);
+}
+
+.score-bar--low {
+  background: var(--danger);
+}
+
+.score-section h3 {
+  margin: 0 0 0.75rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+}
+
+.section-strengths {
+  color: var(--success) !important;
+}
+
+.section-improvements {
+  color: var(--warning) !important;
+}
+
+.score-section p {
+  margin: 0;
+  color: var(--text);
+  line-height: 1.7;
+}
+
+.score-columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border);
+}
+
+.score-section ul {
+  margin: 0;
+  padding-left: 1.25rem;
+  color: var(--text);
+}
+
+.score-section li {
+  margin-bottom: 0.5rem;
+  line-height: 1.5;
+}
+
+.score-section li:last-child {
+  margin-bottom: 0;
+}
+
+@media (max-width: 600px) {
+  .score-columns {
+    grid-template-columns: 1fr;
+  }
+}
