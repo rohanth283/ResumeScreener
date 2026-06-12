@@ -14,3 +14,9 @@ frontend/dist/
 .env
 .env.local
 *.log
+
+# Databases
+*.db
+backend/app.db
+backend/test.db
+
