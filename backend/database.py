@@ -9,6 +9,7 @@ SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL", default_db)
 
 # Only SQLite requires connect_args={"check_same_thread": False}
 if SQLALCHEMY_DATABASE_URL.startswith("sqlite"):
+    print("DATABASE CONNECTION: Using local/ephemeral SQLite database.")
     engine = create_engine(
         SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}
     )
@@ -16,6 +17,7 @@ else:
     # Ensure postgres scheme compatibility (SQLAlchemy 2.0 requires postgresql:// instead of postgres://)
     if SQLALCHEMY_DATABASE_URL.startswith("postgres://"):
         SQLALCHEMY_DATABASE_URL = SQLALCHEMY_DATABASE_URL.replace("postgres://", "postgresql://", 1)
+    print("DATABASE CONNECTION: Using hosted PostgreSQL database.")
     engine = create_engine(SQLALCHEMY_DATABASE_URL)
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

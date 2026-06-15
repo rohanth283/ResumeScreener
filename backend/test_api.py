@@ -54,6 +54,18 @@ def mock_screen_resume():
     main.screen_resume = original_screen_resume
 
 
+@pytest.fixture(autouse=True)
+def mock_send_email(monkeypatch):
+    def mock_send(email, token):
+        from auth import _log_email_locally
+        frontend_url = "http://localhost:3000"
+        reset_link = f"{frontend_url}/?view=reset-password&token={token}"
+        body_text = f"Hello,\n\nPlease reset your password by clicking the link below:\n{reset_link}\n\nThis link will expire in 15 minutes."
+        _log_email_locally(email, reset_link, body_text)
+    
+    monkeypatch.setattr(auth, "send_reset_email", mock_send)
+
+
 def test_health_check():
     response = client.get("/health")
     assert response.status_code == 200
