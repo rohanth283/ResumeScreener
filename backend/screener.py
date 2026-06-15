@@ -125,7 +125,7 @@ def _get_gemini_api_key() -> str:
     return api_key
 
 
-DEFAULT_GEMINI_MODEL = "gemini-2.5-flash-lite"
+DEFAULT_GEMINI_MODEL = "gemini-1.5-flash"
 
 
 def _format_gemini_error(exc: Exception) -> str:
