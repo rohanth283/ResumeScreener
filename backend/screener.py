@@ -1,6 +1,7 @@
 import json
 import os
 import re
+import requests
 from typing import Any
 
 PROMPT_TEMPLATE = """You are an expert technical recruiter. Analyse the resume against the job description below.
@@ -116,49 +117,64 @@ def _validate_result(data: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def _get_gemini_api_key() -> str:
-    api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
+def _get_groq_api_key() -> str:
+    api_key = os.getenv("GROQ_API_KEY")
     if not api_key:
         raise ValueError(
-            "No API key configured. Set GEMINI_API_KEY from Google AI Studio."
+            "No API key configured. Set GROQ_API_KEY in environment variables."
         )
     return api_key
 
 
-DEFAULT_GEMINI_MODEL = "gemini-1.5-flash"
+DEFAULT_GROQ_MODEL = "llama-3.3-70b-versatile"
 
 
-def _format_gemini_error(exc: Exception) -> str:
+def _format_groq_error(exc: Exception) -> str:
     message = str(exc)
-    model = os.getenv("GEMINI_MODEL", DEFAULT_GEMINI_MODEL)
-    if "429" in message or "quota" in message.lower():
+    model = os.getenv("GROQ_MODEL", DEFAULT_GROQ_MODEL)
+    if "401" in message:
+        return "Groq API key is invalid or unauthorized. Please check your GROQ_API_KEY."
+    if "429" in message or "limit" in message.lower():
         return (
-            f"Gemini API quota exceeded for model '{model}'. "
-            "Wait a minute and retry, try GEMINI_MODEL=gemini-2.5-flash-lite in .env, "
-            "or enable billing at https://ai.google.dev/"
+            f"Groq API rate limit reached for model '{model}'. "
+            "Please wait a moment and try again."
         )
-    if "404" in message or "not found" in message.lower():
-        return (
-            f"Gemini model '{model}' is not available for your API key. "
-            "Set GEMINI_MODEL to gemini-2.5-flash-lite or gemini-2.5-flash in .env."
-        )
-    return f"AI API call failed: {message}"
+    return f"Groq AI API call failed: {message}"
 
 
-def _call_gemini(prompt: str) -> str:
-    import google.generativeai as genai
-
-    genai.configure(api_key=_get_gemini_api_key())
-    model_name = os.getenv("GEMINI_MODEL", DEFAULT_GEMINI_MODEL)
-    model = genai.GenerativeModel(model_name)
-    response = model.generate_content(
-        prompt,
-        generation_config=genai.GenerationConfig(
-            temperature=0.0,
-            response_mime_type="application/json",
-        ),
+def _call_groq(prompt: str) -> str:
+    api_key = _get_groq_api_key()
+    model_name = os.getenv("GROQ_MODEL", DEFAULT_GROQ_MODEL)
+    
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json"
+    }
+    
+    payload = {
+        "model": model_name,
+        "messages": [
+            {"role": "user", "content": prompt}
+        ],
+        "temperature": 0.0,
+        "response_format": {"type": "json_object"}
+    }
+    
+    response = requests.post(
+        "https://api.groq.com/openai/v1/chat/completions",
+        headers=headers,
+        json=payload,
+        timeout=30
     )
-    return response.text or ""
+    
+    if response.status_code != 200:
+        raise RuntimeError(f"Groq API returned error status {response.status_code}: {response.text}")
+        
+    result = response.json()
+    try:
+        return result["choices"][0]["message"]["content"] or ""
+    except (KeyError, IndexError) as exc:
+        raise ValueError(f"Unexpected response structure from Groq: {result}") from exc
 
 
 def screen_resume(job_description: str, resume_text: str, priority_skills: str = "") -> dict[str, Any]:
@@ -166,9 +182,9 @@ def screen_resume(job_description: str, resume_text: str, priority_skills: str =
     prompt = build_prompt(job_description, resume_text, priority_skills)
 
     try:
-        raw_response = _call_gemini(prompt)
+        raw_response = _call_groq(prompt)
     except Exception as exc:
-        raise RuntimeError(_format_gemini_error(exc)) from exc
+        raise RuntimeError(_format_groq_error(exc)) from exc
 
     try:
         parsed = _extract_json(raw_response)
