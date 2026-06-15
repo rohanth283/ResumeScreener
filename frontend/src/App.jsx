@@ -9,9 +9,9 @@ import './App.css';
 const API_URL = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? '/_/backend' : 'http://localhost:8000');
 
 function App() {
-  const [token, setToken] = useState(() => localStorage.getItem('auth_token'));
+  const [token, setToken] = useState(() => sessionStorage.getItem('auth_token'));
   const [user, setUser] = useState(() => {
-    const saved = localStorage.getItem('auth_user');
+    const saved = sessionStorage.getItem('auth_user');
     return saved ? JSON.parse(saved) : null;
   });
 
@@ -29,7 +29,7 @@ function App() {
   const [rescreenApplicant, setRescreenApplicant] = useState(null);
 
   const [loading, setLoading] = useState(false);
-  const [jobsLoading, setJobsLoading] = useState(() => !!localStorage.getItem('auth_token'));
+  const [jobsLoading, setJobsLoading] = useState(() => !!sessionStorage.getItem('auth_token'));
   const [error, setError] = useState(null);
 
   // Password Reset View States
@@ -89,8 +89,8 @@ function App() {
   const handleAuthSuccess = ({ token, user }) => {
     setToken(token);
     setUser(user);
-    localStorage.setItem('auth_token', token);
-    localStorage.setItem('auth_user', JSON.stringify(user));
+    sessionStorage.setItem('auth_token', token);
+    sessionStorage.setItem('auth_user', JSON.stringify(user));
   };
 
   const handleLogout = () => {
@@ -102,8 +102,14 @@ function App() {
     setActiveApplicant(null);
     setEditingJob(null);
     setRescreenApplicant(null);
-    localStorage.removeItem('auth_token');
-    localStorage.removeItem('auth_user');
+    sessionStorage.removeItem('auth_token');
+    sessionStorage.removeItem('auth_user');
+  };
+
+  const handleManualLogout = () => {
+    if (window.confirm("Are you sure you want to log out?")) {
+      handleLogout();
+    }
   };
 
   const handleSelectJob = (job) => {
@@ -414,7 +420,7 @@ function App() {
         <div className="user-badge">
           <span className="user-name">{user.name || user.email}</span>
         </div>
-        <button type="button" className="logout-btn" onClick={handleLogout}>
+        <button type="button" className="logout-btn" onClick={handleManualLogout}>
           Log Out
         </button>
       </nav>
