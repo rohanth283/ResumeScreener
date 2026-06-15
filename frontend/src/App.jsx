@@ -29,6 +29,7 @@ function App() {
   const [rescreenApplicant, setRescreenApplicant] = useState(null);
 
   const [loading, setLoading] = useState(false);
+  const [jobsLoading, setJobsLoading] = useState(() => !!localStorage.getItem('auth_token'));
   const [error, setError] = useState(null);
 
   // Password Reset View States
@@ -49,6 +50,7 @@ function App() {
   }, [token, user]);
 
   const fetchJobs = async () => {
+    setJobsLoading(true);
     try {
       const response = await fetch(`${API_URL}/jobs`, {
         headers: { 'Authorization': `Bearer ${token}` }
@@ -62,6 +64,8 @@ function App() {
       setJobs(data);
     } catch (err) {
       console.error(err.message);
+    } finally {
+      setJobsLoading(false);
     }
   };
 
@@ -429,6 +433,7 @@ function App() {
             jobs={jobs}
             onSelectJob={handleSelectJob}
             onCreateJobClick={() => setIsNewJobModalOpen(true)}
+            isLoading={jobsLoading}
           />
         </div>
       ) : (

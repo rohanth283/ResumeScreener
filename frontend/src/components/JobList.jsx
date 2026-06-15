@@ -1,6 +1,38 @@
 import './JobList.css';
 
-export default function JobList({ jobs, onSelectJob, onCreateJobClick }) {
+export default function JobList({ jobs, onSelectJob, onCreateJobClick, isLoading }) {
+  if (isLoading) {
+    return (
+      <div className="job-dashboard">
+        <div className="dashboard-header">
+          <h2>Active Positions</h2>
+          <button type="button" className="add-job-btn" disabled>
+            Create Job
+          </button>
+        </div>
+
+        <div className="jobs-grid">
+          {[1, 2, 3].map((n) => (
+            <div key={n} className="job-card skeleton">
+              <div className="job-card-top">
+                <div className="skeleton-text skeleton-title"></div>
+                <div className="job-badges">
+                  <div className="skeleton-text skeleton-badge" style={{ width: '80px' }}></div>
+                  <div className="skeleton-text skeleton-badge" style={{ width: '60px' }}></div>
+                  <div className="skeleton-text skeleton-badge" style={{ width: '70px' }}></div>
+                </div>
+              </div>
+              <div className="job-card-bottom">
+                <div className="skeleton-text skeleton-count" style={{ width: '90px', height: '20px' }}></div>
+                <div className="skeleton-text skeleton-link" style={{ width: '80px', height: '16px' }}></div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="job-dashboard">
       <div className="dashboard-header">

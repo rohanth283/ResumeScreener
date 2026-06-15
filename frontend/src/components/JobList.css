@@ -190,3 +190,55 @@
   color: #64748b;
   max-width: 200px;
 }
+
+/* Skeleton Loading State styling */
+.job-card.skeleton {
+  cursor: default;
+  pointer-events: none;
+}
+
+.job-card.skeleton:hover {
+  transform: none;
+  background: rgba(30, 41, 59, 0.5);
+  border-color: rgba(255, 255, 255, 0.05);
+  box-shadow: none;
+}
+
+.skeleton-text {
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.04) 25%, rgba(255, 255, 255, 0.09) 50%, rgba(255, 255, 255, 0.04) 75%);
+  background-size: 200% 100%;
+  animation: skeleton-pulse-animation 1.5s infinite linear;
+  border-radius: 6px;
+}
+
+.skeleton-title {
+  height: 20px;
+  width: 60%;
+  margin-bottom: 16px;
+}
+
+.skeleton-badge {
+  display: inline-block;
+  height: 20px;
+  border-radius: 6px;
+}
+
+.skeleton-count {
+  height: 20px;
+  border-radius: 50px;
+}
+
+.skeleton-link {
+  height: 16px;
+  border-radius: 4px;
+}
+
+@keyframes skeleton-pulse-animation {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
