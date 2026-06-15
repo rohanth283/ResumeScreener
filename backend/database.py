@@ -4,7 +4,8 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
 # Support dynamic DATABASE_URL environment variable (e.g. Postgres on Vercel), defaulting to local SQLite
-SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./app.db")
+default_db = "sqlite:////tmp/app.db" if os.getenv("VERCEL") else "sqlite:///./app.db"
+SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL", default_db)
 
 # Only SQLite requires connect_args={"check_same_thread": False}
 if SQLALCHEMY_DATABASE_URL.startswith("sqlite"):
