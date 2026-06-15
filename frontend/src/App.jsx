@@ -281,6 +281,11 @@ function App() {
           return { files: updated };
         });
       }
+
+      // Add a small delay between requests to avoid Gemini API Rate Limits (429)
+      if (i < files.length - 1) {
+        await new Promise((resolve) => setTimeout(resolve, 2500));
+      }
     }
 
     // Update local job applicant count once done
