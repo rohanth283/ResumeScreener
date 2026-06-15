@@ -370,7 +370,7 @@ async def screen_applicant_resume(
         )
     except RuntimeError as exc:
         raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(exc)
         )
     except Exception as exc:
@@ -444,7 +444,7 @@ async def rescreen_applicant_resume(
         )
     except RuntimeError as exc:
         raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(exc)
         )
     except Exception as exc:

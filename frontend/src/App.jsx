@@ -243,8 +243,20 @@ function App() {
           return;
         }
 
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.detail || 'Resume screening failed.');
+        let data = null;
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          data = await response.json();
+        }
+
+        if (!response.ok) {
+          const errMsg = data?.detail || `Resume screening failed with status ${response.status}`;
+          throw new Error(errMsg);
+        }
+
+        if (!data) {
+          throw new Error('Received non-JSON response from server.');
+        }
 
         // Append new applicant and sort descending by score
         setApplicants((prev) => {
@@ -303,8 +315,20 @@ function App() {
         return;
       }
 
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.detail || 'Resume rescreening failed.');
+      let data = null;
+      const contentType = response.headers.get('content-type');
+      if (contentType && contentType.includes('application/json')) {
+        data = await response.json();
+      }
+
+      if (!response.ok) {
+        const errMsg = data?.detail || `Resume rescreening failed with status ${response.status}`;
+        throw new Error(errMsg);
+      }
+
+      if (!data) {
+        throw new Error('Received non-JSON response from server.');
+      }
 
       // Update applicant in local state
       setApplicants((prev) => {
