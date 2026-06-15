@@ -1,100 +1,190 @@
 import { useState } from 'react';
 import './UploadApplicantModal.css';
 
-export default function UploadApplicantModal({ onClose, onSubmit, loading, candidateEmail = '' }) {
-  const [email, setEmail] = useState(candidateEmail);
-  const [resumeFile, setResumeFile] = useState(null);
-  const [fileName, setFileName] = useState('');
+export default function UploadApplicantModal({ 
+  onClose, 
+  onSubmit, 
+  loading, 
+  candidateEmail = '', 
+  uploadProgress = null 
+}) {
+  const [selectedFiles, setSelectedFiles] = useState([]);
+  const [isDragOver, setIsDragOver] = useState(false);
 
   const handleFileChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      setResumeFile(file);
-      setFileName(file.name);
+    const files = Array.from(e.target.files || []);
+    const valid = files.filter(f => {
+      const name = f.name.toLowerCase();
+      return name.endsWith('.pdf') || name.endsWith('.txt');
+    });
+
+    if (candidateEmail) {
+      if (valid.length > 0) setSelectedFiles([valid[0]]);
+    } else {
+      setSelectedFiles(prev => [...prev, ...valid]);
     }
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    setIsDragOver(true);
+  };
+
+  const handleDragLeave = () => {
+    setIsDragOver(false);
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    const files = Array.from(e.dataTransfer.files || []);
+    const valid = files.filter(f => {
+      const name = f.name.toLowerCase();
+      return name.endsWith('.pdf') || name.endsWith('.txt');
+    });
+
+    if (candidateEmail) {
+      if (valid.length > 0) setSelectedFiles([valid[0]]);
+    } else {
+      setSelectedFiles(prev => [...prev, ...valid]);
+    }
+  };
+
+  const removeFile = (idx) => {
+    if (loading || uploadProgress) return;
+    setSelectedFiles(prev => prev.filter((_, i) => i !== idx));
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!email.trim() || !resumeFile) return;
-
-    onSubmit({
-      email: email.trim(),
-      resumeFile,
-    });
+    if (selectedFiles.length === 0 || loading || uploadProgress) return;
+    onSubmit(selectedFiles);
   };
 
-  const canSubmit = email.trim() && resumeFile && !loading;
+  const isUploading = !!uploadProgress;
+  const isFinished = uploadProgress && uploadProgress.files.every(f => f.status === 'success' || f.status === 'error');
 
   return (
-    <div className="upload-modal-overlay" onClick={onClose}>
+    <div className="upload-modal-overlay" onClick={isUploading && !isFinished ? undefined : onClose}>
       <div className="upload-modal-content" onClick={(e) => e.stopPropagation()}>
-        <h3>{candidateEmail ? 'Re-screen Candidate' : 'Screen Candidate'}</h3>
+        <h3>{candidateEmail ? 'Re-screen Candidate' : 'Screen Candidates'}</h3>
         <p>
           {candidateEmail
             ? "Upload a new resume file to update this candidate's screening analysis."
-            : 'Upload a resume to instantly screen the candidate against this job.'}
+            : 'Select or drag multiple resumes to instantly screen candidates using AI.'}
         </p>
 
-        <form onSubmit={handleSubmit} className="upload-modal-form">
-          <div className="modal-input-field">
-            <label htmlFor="cand-email">Candidate Email Address</label>
-            <input
-              id="cand-email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="candidate@example.com"
-              required
-              disabled={!!candidateEmail || loading}
-            />
-          </div>
-
-          <div className="modal-input-field">
-            <label htmlFor="cand-resume">Resume File</label>
-            <div className="modal-file-input-wrapper">
-              <input
-                id="cand-resume"
-                type="file"
-                accept=".pdf,.txt"
-                onChange={handleFileChange}
-                disabled={loading}
-              />
-              <span className="modal-file-icon">📄</span>
-              <span className="modal-file-hint">
-                {fileName || 'Click or drag a .pdf or .txt resume'}
-              </span>
-              <span className="modal-file-support">
-                Supports PDF or TXT files up to 10MB
-              </span>
+        {isUploading ? (
+          <div className="upload-progress-wrapper">
+            <h4 className="progress-title">
+              {isFinished ? 'Screening Completed' : 'Analyzing Resumes...'}
+            </h4>
+            <div className="progress-list">
+              {uploadProgress.files.map((file, i) => (
+                <div key={i} className="progress-item">
+                  <span className="progress-file-name" title={file.name}>
+                    📄 {file.name}
+                  </span>
+                  <span className={`status-badge ${file.status}`}>
+                    {file.status === 'pending' && <span className="badge-text pending">⏳ Pending</span>}
+                    {file.status === 'loading' && (
+                      <span className="badge-text loading">
+                        <span className="mini-spinner" /> Screening...
+                      </span>
+                    )}
+                    {file.status === 'success' && <span className="badge-text success">✅ Complete</span>}
+                    {file.status === 'error' && (
+                      <span className="badge-text error" title={file.errorMsg}>
+                        ❌ Failed
+                      </span>
+                    )}
+                  </span>
+                </div>
+              ))}
             </div>
           </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="upload-modal-form">
+            <div className="modal-input-field">
+              <label htmlFor="cand-resume">Candidate Resumes</label>
+              <div 
+                className={`modal-file-input-wrapper ${isDragOver ? 'drag-over' : ''}`}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+              >
+                <input
+                  id="cand-resume"
+                  type="file"
+                  accept=".pdf,.txt"
+                  multiple={!candidateEmail}
+                  onChange={handleFileChange}
+                  disabled={loading}
+                />
+                <span className="modal-file-icon">📤</span>
+                <span className="modal-file-hint">
+                  {candidateEmail 
+                    ? 'Click or drag a single resume file'
+                    : 'Click or drag multiple .pdf or .txt resumes'}
+                </span>
+                <span className="modal-file-support">
+                  Max file size: 10MB per document
+                </span>
+              </div>
+            </div>
 
-          <div className="modal-actions">
+            {selectedFiles.length > 0 && (
+              <div className="selected-files-container">
+                <h4>Selected Files ({selectedFiles.length})</h4>
+                <div className="selected-files-list">
+                  {selectedFiles.map((file, idx) => (
+                    <div key={idx} className="selected-file-item">
+                      <span className="file-item-name" title={file.name}>📄 {file.name}</span>
+                      <button 
+                        type="button" 
+                        className="remove-file-btn" 
+                        onClick={() => removeFile(idx)}
+                        disabled={loading}
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="modal-actions">
+              <button
+                type="button"
+                className="screen-modal-btn cancel"
+                onClick={onClose}
+                disabled={loading}
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="screen-modal-btn submit"
+                disabled={selectedFiles.length === 0 || loading}
+              >
+                {candidateEmail ? 'Re-screen Candidate' : `Screen ${selectedFiles.length} Resume${selectedFiles.length === 1 ? '' : 's'}`}
+              </button>
+            </div>
+          </form>
+        )}
+
+        {isFinished && (
+          <div className="modal-actions" style={{ marginTop: '24px' }}>
             <button
               type="button"
-              className="screen-modal-btn cancel"
-              onClick={onClose}
-              disabled={loading}
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
               className="screen-modal-btn submit"
-              disabled={!canSubmit}
+              onClick={onClose}
             >
-              {loading ? (
-                <>
-                  <span className="spinner" />
-                  {candidateEmail ? 'Re-screening...' : 'Screening...'}
-                </>
-              ) : (
-                candidateEmail ? 'Re-screen Candidate' : 'Screen Candidate'
-              )}
+              Done
             </button>
           </div>
-        </form>
+        )}
       </div>
     </div>
   );

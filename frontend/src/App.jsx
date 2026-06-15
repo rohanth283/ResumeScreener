@@ -30,6 +30,7 @@ function App() {
 
   const [loading, setLoading] = useState(false);
   const [jobsLoading, setJobsLoading] = useState(() => !!sessionStorage.getItem('auth_token'));
+  const [uploadProgress, setUploadProgress] = useState(null);
   const [error, setError] = useState(null);
 
   // Password Reset View States
@@ -203,55 +204,87 @@ function App() {
     }
   };
 
-  const handleScreenResume = async ({ email, resumeFile }) => {
+  const handleScreenResume = async (files) => {
     setLoading(true);
     setError(null);
-    try {
-      const formData = new FormData();
-      formData.append('email', email);
-      formData.append('resume_file', resumeFile);
 
-      const response = await fetch(`${API_URL}/jobs/${activeJob.id}/screen`, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` },
-        body: formData,
+    // Initialize progress tracking state
+    const progressFiles = files.map((file) => ({
+      name: file.name,
+      status: 'pending',
+      errorMsg: null
+    }));
+    setUploadProgress({ files: progressFiles });
+
+    let activeApplicantsCount = 0;
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+
+      // Update this file status to loading
+      setUploadProgress((prev) => {
+        const updated = [...prev.files];
+        updated[i] = { ...updated[i], status: 'loading' };
+        return { files: updated };
       });
 
-      if (response.status === 401) {
-        handleLogout();
-        return;
+      try {
+        const formData = new FormData();
+        formData.append('resume_file', file);
+
+        const response = await fetch(`${API_URL}/jobs/${activeJob.id}/screen`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}` },
+          body: formData,
+        });
+
+        if (response.status === 401) {
+          handleLogout();
+          return;
+        }
+
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.detail || 'Resume screening failed.');
+
+        // Append new applicant and sort descending by score
+        setApplicants((prev) => {
+          const updated = [...prev, data];
+          return updated.sort((a, b) => b.match_score - a.match_score);
+        });
+
+        activeApplicantsCount += 1;
+
+        // Update this file status to success
+        setUploadProgress((prev) => {
+          const updated = [...prev.files];
+          updated[i] = { ...updated[i], status: 'success' };
+          return { files: updated };
+        });
+      } catch (err) {
+        console.error(err.message);
+        // Update this file status to error
+        setUploadProgress((prev) => {
+          const updated = [...prev.files];
+          updated[i] = { ...updated[i], status: 'error', errorMsg: err.message };
+          return { files: updated };
+        });
       }
+    }
 
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.detail || 'Resume screening failed.');
-
-      // Append new applicant and sort descending by score
-      setApplicants((prev) => {
-        const updated = [...prev, data];
-        return updated.sort((a, b) => b.match_score - a.match_score);
-      });
-
-      // Update local job applicant count
+    // Update local job applicant count once done
+    if (activeApplicantsCount > 0) {
       setJobs((prev) => prev.map((j) => {
         if (j.id === activeJob.id) {
-          return { ...j, applicant_count: (j.applicant_count || 0) + 1 };
+          return { ...j, applicant_count: (j.applicant_count || 0) + activeApplicantsCount };
         }
         return j;
       }));
-
-      setIsUploadModalOpen(false);
-
-      // Instantly open the AI analysis report drawer for review!
-      setActiveApplicant(data);
-      setIsDrawerOpen(true);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
     }
+
+    setLoading(false);
   };
 
-  const handleRescreenApplicant = async ({ email, resumeFile }) => {
+  const handleRescreenApplicant = async (resumeFile) => {
     if (!rescreenApplicant) return;
     setLoading(true);
     setError(null);
@@ -590,10 +623,12 @@ function App() {
           onClose={() => {
             setIsUploadModalOpen(false);
             setRescreenApplicant(null);
+            setUploadProgress(null);
           }}
-          onSubmit={rescreenApplicant ? handleRescreenApplicant : handleScreenResume}
+          onSubmit={rescreenApplicant ? (files) => handleRescreenApplicant(files[0]) : handleScreenResume}
           loading={loading}
           candidateEmail={rescreenApplicant ? rescreenApplicant.email : ''}
+          uploadProgress={uploadProgress}
         />
       )}
 

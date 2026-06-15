@@ -1,0 +1,17 @@
+Alice Cooper
+Email: alice.cooper@example.com
+Phone: (555) 019-2834
+Address: San Francisco, CA
+
+SUMMARY
+Experienced Software Engineer with a passion for building scalable web services. Proven experience using React and FastAPI.
+
+EXPERIENCE
+Software Engineer at TechCorp (2023 - Present)
+- Developed and maintained web applications using React.
+- Built backend API endpoints using FastAPI and PostgreSQL.
+- Improved database query latency by 20%.
+
+SKILLS
+- React, JavaScript, HTML, CSS
+- FastAPI, Python, SQL, Git

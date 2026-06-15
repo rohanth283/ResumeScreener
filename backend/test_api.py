@@ -43,6 +43,7 @@ def mock_screen_resume():
     original_screen_resume = main.screen_resume
     main.screen_resume = lambda jd, text, priority_skills="": {
         "candidate_name": "John Doe",
+        "candidate_email": "john.doe@example.com",
         "match_score": 85 if not priority_skills else 95,
         "summary": ["Mocked bullet point 1.", "Mocked bullet point 2.", "Mocked bullet point 3."],
         "strengths": ["Skill A", "Skill B", "Skill C"],
@@ -245,5 +246,40 @@ def test_password_reset_flow():
     response = client.post("/auth/reset-password", json=reset_payload)
     assert response.status_code == 400
     assert "already been used" in response.json()["detail"]
+
+
+def test_screen_without_email():
+    # 1. Signup recruiter user
+    signup_payload = {
+        "email": "recruiter2@example.com",
+        "password": "securepassword",
+        "name": "Jane Recruiter 2"
+    }
+    response = client.post("/auth/signup", json=signup_payload)
+    assert response.status_code == 200
+    token = response.json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    # 2. Create a new Job
+    job_payload = {
+        "title": "Software Engineer 2",
+        "department": "Engineering",
+        "description": "FastAPI experience required."
+    }
+    response = client.post("/jobs", json=job_payload, headers=headers)
+    job_id = response.json()["id"]
+
+    # 3. Screen a candidate's resume for this job without passing "email" in form
+    resume_file = ("resume.txt", b"John Doe's Resume details: FastAPI, SQL, React", "text/plain")
+    response = client.post(
+        f"/jobs/{job_id}/screen",
+        files={"resume_file": resume_file},
+        headers=headers
+    )
+    assert response.status_code == 200
+    app_data = response.json()
+    assert app_data["email"] == "john.doe@example.com"  # Extracted from mock response
+    assert app_data["name"] == "John Doe"
+
 
 

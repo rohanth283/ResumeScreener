@@ -16,6 +16,7 @@ SCORING RULES (COMPUTE SYSTEMATICALLY):
 
 Return ONLY a valid JSON object with these exact fields:
 - candidate_name: string (the candidate's full name extracted from the resume, e.g. "John Doe")
+- candidate_email: string (the candidate's email address extracted from the resume, e.g. "john.doe@example.com")
 - match_score: integer 0–100 representing overall fit calculated according to the SCORING RULES above.
 - summary: array of exactly 3 short, concise bullet-point strings summarising the assessment
 - strengths: array of exactly 3 strings describing where the candidate matches well
@@ -62,14 +63,22 @@ def _extract_json(text: str) -> dict[str, Any]:
 
 def _validate_result(data: dict[str, Any]) -> dict[str, Any]:
     """Validate and normalise the screening result."""
-    required = ("candidate_name", "match_score", "summary", "strengths", "improvements", "skills_matched", "skills_missing")
+    required = ("candidate_name", "candidate_email", "match_score", "summary", "strengths", "improvements", "skills_matched", "skills_missing")
     missing = [field for field in required if field not in data]
     if missing:
-        raise ValueError(f"Model response missing fields: {', '.join(missing)}")
+        # Fall back if only candidate_email is missing, making it optional in validation
+        if len(missing) == 1 and "candidate_email" in missing:
+            data["candidate_email"] = "unknown@example.com"
+        else:
+            raise ValueError(f"Model response missing fields: {', '.join(missing)}")
 
     name = str(data["candidate_name"]).strip()
     if not name:
         name = "Unknown Candidate"
+
+    email = str(data.get("candidate_email", "")).strip().lower()
+    if not email or "@" not in email or "." not in email:
+        email = "unknown@example.com"
 
     score = int(data["match_score"])
     if not 0 <= score <= 100:
@@ -97,6 +106,7 @@ def _validate_result(data: dict[str, Any]) -> dict[str, Any]:
 
     return {
         "candidate_name": name,
+        "candidate_email": email,
         "match_score": score,
         "summary": summary,
         "strengths": strengths,

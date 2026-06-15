@@ -1,0 +1,18 @@
+Charlie Chaplin
+Email: charlie.chaplin@example.com
+Phone: (555) 012-3456
+Address: Los Angeles, CA
+
+SUMMARY
+Backend Engineer focused on system performance, API security, and Python services.
+
+EXPERIENCE
+Software Engineer at PyTech (2021 - Present)
+- Designed secure FastAPI microservices with JWT authentication.
+- Optimized PostgreSQL database schemas and connection pooling.
+- Orchestrated container deployments with Docker and Kubernetes.
+
+SKILLS
+- FastAPI, Python, Django
+- SQL, PostgreSQL, Redis
+- Docker, CI/CD, Git

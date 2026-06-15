@@ -312,7 +312,7 @@ def get_job_applicants(
 @app.post("/jobs/{job_id}/screen", response_model=schemas.ApplicantResponse)
 async def screen_applicant_resume(
     job_id: int,
-    email: str = Form(...),
+    email: str = Form(None),
     resume_file: UploadFile = File(...),
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db)
@@ -323,12 +323,6 @@ async def screen_applicant_resume(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Job position not found."
-        )
-    
-    if not email.strip():
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Candidate email is required."
         )
 
     # Validate file type
@@ -347,10 +341,13 @@ async def screen_applicant_resume(
         # Trigger Google Gemini AI matching with priority skills weighting
         screening_res = screen_resume(job.description, resume_text, job.priority_skills or "")
         
+        # Use extracted email if not passed explicitly in form
+        candidate_email = email.strip() if (email and email.strip()) else screening_res.get("candidate_email", "unknown@example.com")
+
         # Save results to SQL database
         applicant = models.Applicant(
             job_id=job_id,
-            email=email,
+            email=candidate_email,
             name=screening_res.get("candidate_name", "Unknown Candidate"),
             resume_filename=resume_file.filename,
             resume_text=resume_text,
