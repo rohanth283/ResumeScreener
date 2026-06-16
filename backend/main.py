@@ -25,24 +25,26 @@ from sqlalchemy import text
 models.Base.metadata.create_all(bind=engine)
 
 def run_migrations():
-    with engine.begin() as conn:
-        # 1. Ensure user_id exists in jobs
-        try:
+    # 1. Ensure user_id exists in jobs
+    try:
+        with engine.begin() as conn:
             conn.execute(text("ALTER TABLE jobs ADD COLUMN user_id INTEGER REFERENCES users(id) ON DELETE CASCADE"))
-            print("MIGRATION: Added user_id column to jobs table.")
-        except Exception as e:
-            print(f"MIGRATION INFO: Skip user_id column addition (likely already exists): {e}")
+        print("MIGRATION: Added user_id column to jobs table.")
+    except Exception as e:
+        print(f"MIGRATION INFO: Skip user_id column addition (likely already exists): {e}")
 
-        # 2. Ensure is_reviewed exists in applicants
-        try:
+    # 2. Ensure is_reviewed exists in applicants
+    try:
+        with engine.begin() as conn:
             conn.execute(text("ALTER TABLE applicants ADD COLUMN is_reviewed BOOLEAN DEFAULT FALSE"))
-            print("MIGRATION: Added is_reviewed column to applicants table.")
-        except Exception as e:
-            print(f"MIGRATION INFO: Skip is_reviewed column addition (likely already exists): {e}")
+        print("MIGRATION: Added is_reviewed column to applicants table.")
+    except Exception as e:
+        print(f"MIGRATION INFO: Skip is_reviewed column addition (likely already exists): {e}")
 
-        # 3. PostgreSQL Row-Level Security (RLS) configuration
-        if not engine.url.drivername.startswith("sqlite"):
-            try:
+    # 3. PostgreSQL Row-Level Security (RLS) configuration
+    if not engine.url.drivername.startswith("sqlite"):
+        try:
+            with engine.begin() as conn:
                 # Enable and Force RLS on jobs
                 conn.execute(text("ALTER TABLE jobs ENABLE ROW LEVEL SECURITY"))
                 conn.execute(text("ALTER TABLE jobs FORCE ROW LEVEL SECURITY"))
@@ -66,10 +68,9 @@ def run_migrations():
                     "CREATE POLICY applicants_user_policy ON applicants "
                     "USING (job_id IN (SELECT id FROM jobs))"
                 ))
-                
-                print("MIGRATION SUCCESS: Configured PostgreSQL Row-Level Security (RLS) policies.")
-            except Exception as e:
-                print(f"MIGRATION ERROR: Failed to configure PostgreSQL RLS: {e}")
+            print("MIGRATION SUCCESS: Configured PostgreSQL Row-Level Security (RLS) policies.")
+        except Exception as e:
+            print(f"MIGRATION ERROR: Failed to configure PostgreSQL RLS: {e}")
 
 run_migrations()
 
