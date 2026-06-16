@@ -73,6 +73,7 @@ class ApplicantResponse(BaseModel):
     improvements: List[str]
     skills_matched: List[str]
     skills_missing: List[str]
+    is_reviewed: Optional[bool] = False
     created_at: datetime
 
     class Config:

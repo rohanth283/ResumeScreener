@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import './AnalysisDrawer.css';
 
-export default function AnalysisDrawer({ isOpen, onClose, applicant, onRescreen }) {
+export default function AnalysisDrawer({ isOpen, onClose, applicant, onRescreen, onToggleReview }) {
   const [shouldRender, setShouldRender] = useState(isOpen);
   const [activeTab, setActiveTab] = useState('report');
 
@@ -88,6 +88,24 @@ export default function AnalysisDrawer({ isOpen, onClose, applicant, onRescreen 
 
           {activeTab === 'report' ? (
             <>
+              {/* Human-in-the-loop Audit Section */}
+              <div className="audit-section">
+                <div className="audit-disclaimer">
+                  ⚠️ <strong>AI-Generated Evaluation:</strong> This report was compiled by AI to assist the screening process. Please conduct a manual review before making final candidate decisions.
+                </div>
+                <div className="audit-action-row">
+                  <label className="audit-toggle-container">
+                    <input 
+                      type="checkbox" 
+                      checked={applicant.is_reviewed || false} 
+                      onChange={() => onToggleReview(applicant)}
+                    />
+                    <span className={`audit-toggle-btn ${applicant.is_reviewed ? 'reviewed' : ''}`}>
+                      {applicant.is_reviewed ? "✓ Marked as Reviewed" : "Mark as Reviewed"}
+                    </span>
+                  </label>
+                </div>
+              </div>
               {/* Evaluation Summary */}
               <div className="detail-block">
                 <h5>Evaluation Summary</h5>

@@ -26,11 +26,50 @@ models.Base.metadata.create_all(bind=engine)
 
 def run_migrations():
     with engine.begin() as conn:
+        # 1. Ensure user_id exists in jobs
         try:
             conn.execute(text("ALTER TABLE jobs ADD COLUMN user_id INTEGER REFERENCES users(id) ON DELETE CASCADE"))
-            print("MIGRATION SUCCESS: Added user_id column to jobs table.")
+            print("MIGRATION: Added user_id column to jobs table.")
         except Exception as e:
             print(f"MIGRATION INFO: Skip user_id column addition (likely already exists): {e}")
+
+        # 2. Ensure is_reviewed exists in applicants
+        try:
+            conn.execute(text("ALTER TABLE applicants ADD COLUMN is_reviewed BOOLEAN DEFAULT FALSE"))
+            print("MIGRATION: Added is_reviewed column to applicants table.")
+        except Exception as e:
+            print(f"MIGRATION INFO: Skip is_reviewed column addition (likely already exists): {e}")
+
+        # 3. PostgreSQL Row-Level Security (RLS) configuration
+        if not engine.url.drivername.startswith("sqlite"):
+            try:
+                # Enable and Force RLS on jobs
+                conn.execute(text("ALTER TABLE jobs ENABLE ROW LEVEL SECURITY"))
+                conn.execute(text("ALTER TABLE jobs FORCE ROW LEVEL SECURITY"))
+                
+                # Enable and Force RLS on applicants
+                conn.execute(text("ALTER TABLE applicants ENABLE ROW LEVEL SECURITY"))
+                conn.execute(text("ALTER TABLE applicants FORCE ROW LEVEL SECURITY"))
+                
+                # Drop existing policies
+                conn.execute(text("DROP POLICY IF EXISTS jobs_user_policy ON jobs"))
+                conn.execute(text("DROP POLICY IF EXISTS applicants_user_policy ON applicants"))
+                
+                # Create jobs user policy matching the connection's session variable
+                conn.execute(text(
+                    "CREATE POLICY jobs_user_policy ON jobs "
+                    "USING (user_id = NULLIF(current_setting('app.current_user_id', true), '')::integer)"
+                ))
+                
+                # Create applicants user policy checking if the job is accessible
+                conn.execute(text(
+                    "CREATE POLICY applicants_user_policy ON applicants "
+                    "USING (job_id IN (SELECT id FROM jobs))"
+                ))
+                
+                print("MIGRATION SUCCESS: Configured PostgreSQL Row-Level Security (RLS) policies.")
+            except Exception as e:
+                print(f"MIGRATION ERROR: Failed to configure PostgreSQL RLS: {e}")
 
 run_migrations()
 
@@ -68,6 +107,11 @@ async def get_current_user(
     user = db.query(models.User).filter(models.User.email == email).first()
     if user is None:
         raise credentials_exception
+        
+    # Configure the session context user ID if it is a PostgreSQL database
+    if not db.bind.url.drivername.startswith("sqlite"):
+        db.execute(text("SET LOCAL app.current_user_id = :uid"), {"uid": user.id})
+        
     return user
 
 
@@ -513,6 +557,41 @@ async def rescreen_applicant_resume(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"An unexpected error occurred: {exc}"
         )
+@app.put("/jobs/{job_id}/applicants/{applicant_id}/review", response_model=schemas.ApplicantResponse)
+def toggle_applicant_review(
+    job_id: int,
+    applicant_id: int,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    # Verify job ownership
+    job = db.query(models.Job).filter(models.Job.id == job_id).first()
+    if not job:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Job position not found."
+        )
+    if job.user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to edit this candidate."
+        )
+        
+    applicant = db.query(models.Applicant).filter(
+        models.Applicant.id == applicant_id,
+        models.Applicant.job_id == job_id
+    ).first()
+    if not applicant:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Candidate record not found."
+        )
+        
+    # Toggle audited/reviewed status
+    applicant.is_reviewed = not (applicant.is_reviewed or False)
+    db.commit()
+    db.refresh(applicant)
+    return applicant
 
 
 if __name__ == "__main__":

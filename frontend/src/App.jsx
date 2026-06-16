@@ -388,6 +388,33 @@ function App() {
     setIsDrawerOpen(true);
   };
 
+  const handleToggleReview = async (applicant) => {
+    try {
+      const response = await fetch(`${API_URL}/jobs/${activeJob.id}/applicants/${applicant.id}/review`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      if (response.status === 401) {
+        handleLogout();
+        return;
+      }
+      if (!response.ok) throw new Error('Could not update candidate review status.');
+      const data = await response.json();
+
+      // Update state in-place
+      setApplicants((prev) => prev.map((a) => (a.id === applicant.id ? data : a)));
+      
+      // Update activeApplicant if it's currently selected
+      if (activeApplicant && activeApplicant.id === applicant.id) {
+        setActiveApplicant(data);
+      }
+    } catch (err) {
+      alert(err.message);
+    }
+  };
+
   const handleResetPasswordSubmit = async (e) => {
     e.preventDefault();
     setResetError(null);
@@ -641,7 +668,14 @@ function App() {
                           onClick={() => handleSelectApplicant(app)}
                         >
                           <td>
-                            <div className="candidate-name-cell">{app.name || 'Unknown Candidate'}</div>
+                            <div className="candidate-name-cell">
+                              {app.name || 'Unknown Candidate'}
+                              {app.is_reviewed && (
+                                <span className="reviewed-checkmark-badge" title="Manually Audited & Reviewed">
+                                  ✓ Reviewed
+                                </span>
+                              )}
+                            </div>
                             <div className="candidate-email-cell">{app.email}</div>
                           </td>
                           <td>
@@ -694,6 +728,7 @@ function App() {
         onClose={() => setIsDrawerOpen(false)}
         applicant={activeApplicant}
         onRescreen={handleRescreenTrigger}
+        onToggleReview={handleToggleReview}
       />
     </div>
   );
