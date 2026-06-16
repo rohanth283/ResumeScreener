@@ -66,6 +66,7 @@ class ApplicantResponse(BaseModel):
     email: str
     name: Optional[str] = None
     resume_filename: str
+    resume_text: str
     match_score: int
     summary: List[str]  # Stored as list of bullet points
     strengths: List[str]

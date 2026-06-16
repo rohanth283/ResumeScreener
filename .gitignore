@@ -20,3 +20,5 @@ frontend/dist/
 backend/app.db
 backend/test.db
 
+.vercel
+.env*

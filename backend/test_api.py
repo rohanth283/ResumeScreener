@@ -282,4 +282,97 @@ def test_screen_without_email():
     assert app_data["name"] == "John Doe"
 
 
+def test_screen_duplicate_applicants():
+    # 1. Signup recruiter
+    signup_payload = {
+        "email": "recruiter_dup@example.com",
+        "password": "securepassword",
+        "name": "Jane Recruiter Dup"
+    }
+    response = client.post("/auth/signup", json=signup_payload)
+    assert response.status_code == 200
+    token = response.json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    # 2. Create job
+    job_payload = {
+        "title": "Staff Engineer",
+        "department": "Engineering",
+        "description": "Expert in FastAPI."
+    }
+    response = client.post("/jobs", json=job_payload, headers=headers)
+    job_id = response.json()["id"]
+
+    # 3. Screen first time (with candidate@example.com)
+    resume1 = ("resume1.txt", b"FastAPI expert resume", "text/plain")
+    response = client.post(
+        f"/jobs/{job_id}/screen",
+        data={"email": "candidate@example.com"},
+        files={"resume_file": resume1},
+        headers=headers
+    )
+    assert response.status_code == 200
+    id1 = response.json()["id"]
+
+    # Verify 1 applicant in DB
+    response = client.get(f"/jobs/{job_id}/applicants", headers=headers)
+    assert len(response.json()) == 1
+
+    # 4. Screen second time (with candidate@example.com) but different file name and email case-insensitivity
+    resume2 = ("resume_updated.txt", b"FastAPI expert resume updated", "text/plain")
+    response = client.post(
+        f"/jobs/{job_id}/screen",
+        data={"email": "CANDIDATE@example.com"},
+        files={"resume_file": resume2},
+        headers=headers
+    )
+    assert response.status_code == 200
+    id2 = response.json()["id"]
+
+    # Verify ID is the same (updated in-place)
+    assert id1 == id2
+    assert response.json()["resume_filename"] == "resume_updated.txt"
+
+    # Verify still only 1 applicant in DB
+    response = client.get(f"/jobs/{job_id}/applicants", headers=headers)
+    applicants = response.json()
+    assert len(applicants) == 1
+    assert applicants[0]["resume_filename"] == "resume_updated.txt"
+
+    # 5. Screen with "unknown@example.com" placeholder email (simulating no email extracted)
+    # We will override mock_screen_resume default email to unknown@example.com
+    import main
+    original_screen = main.screen_resume
+    main.screen_resume = lambda jd, text, priority_skills="": {
+        "candidate_name": "No Email Candidate",
+        "candidate_email": "unknown@example.com",
+        "match_score": 50,
+        "summary": [], "strengths": [], "improvements": [], "skills_matched": [], "skills_missing": []
+    }
+
+    try:
+        response = client.post(
+            f"/jobs/{job_id}/screen",
+            files={"resume_file": ("resume_no_email1.txt", b"No email here", "text/plain")},
+            headers=headers
+        )
+        assert response.status_code == 200
+        assert response.json()["email"] == "unknown@example.com"
+
+        response2 = client.post(
+            f"/jobs/{job_id}/screen",
+            files={"resume_file": ("resume_no_email2.txt", b"Another no email", "text/plain")},
+            headers=headers
+        )
+        assert response2.status_code == 200
+        assert response2.json()["email"] == "unknown@example.com"
+
+        # Verify they are treated as two distinct applicants since email was "unknown@example.com"
+        response = client.get(f"/jobs/{job_id}/applicants", headers=headers)
+        assert len(response.json()) == 3 # 1 original + 2 unknown placeholder applicants
+    finally:
+        main.screen_resume = original_screen
+
+
+
 

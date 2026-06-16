@@ -344,25 +344,49 @@ async def screen_applicant_resume(
         # Use extracted email if not passed explicitly in form
         candidate_email = email.strip() if (email and email.strip()) else screening_res.get("candidate_email", "unknown@example.com")
 
-        # Save results to SQL database
-        applicant = models.Applicant(
-            job_id=job_id,
-            email=candidate_email,
-            name=screening_res.get("candidate_name", "Unknown Candidate"),
-            resume_filename=resume_file.filename,
-            resume_text=resume_text,
-            match_score=screening_res["match_score"],
-            summary=screening_res["summary"],
-            strengths=screening_res["strengths"],
-            improvements=screening_res["improvements"],
-            skills_matched=screening_res["skills_matched"],
-            skills_missing=screening_res["skills_missing"]
-        )
-        db.add(applicant)
-        db.commit()
-        db.refresh(applicant)
-        
-        return applicant
+        # Check if an applicant with this email is already screened for this job (exclude placeholder emails)
+        existing_applicant = None
+        if candidate_email and candidate_email.strip().lower() != "unknown@example.com":
+            existing_applicant = db.query(models.Applicant).filter(
+                models.Applicant.job_id == job_id,
+                func.lower(models.Applicant.email) == candidate_email.strip().lower()
+            ).first()
+
+        if existing_applicant:
+            # Update the existing record in-place to keep only one record per candidate
+            existing_applicant.name = screening_res.get("candidate_name", "Unknown Candidate")
+            existing_applicant.resume_filename = resume_file.filename
+            existing_applicant.resume_text = resume_text
+            existing_applicant.match_score = screening_res["match_score"]
+            existing_applicant.summary = screening_res["summary"]
+            existing_applicant.strengths = screening_res["strengths"]
+            existing_applicant.improvements = screening_res["improvements"]
+            existing_applicant.skills_matched = screening_res["skills_matched"]
+            existing_applicant.skills_missing = screening_res["skills_missing"]
+            existing_applicant.created_at = func.now() # update timestamp to show latest screening date
+            
+            db.commit()
+            db.refresh(existing_applicant)
+            return existing_applicant
+        else:
+            # Save results to SQL database
+            applicant = models.Applicant(
+                job_id=job_id,
+                email=candidate_email,
+                name=screening_res.get("candidate_name", "Unknown Candidate"),
+                resume_filename=resume_file.filename,
+                resume_text=resume_text,
+                match_score=screening_res["match_score"],
+                summary=screening_res["summary"],
+                strengths=screening_res["strengths"],
+                improvements=screening_res["improvements"],
+                skills_matched=screening_res["skills_matched"],
+                skills_missing=screening_res["skills_missing"]
+            )
+            db.add(applicant)
+            db.commit()
+            db.refresh(applicant)
+            return applicant
     except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

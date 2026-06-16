@@ -221,7 +221,8 @@ function App() {
     }));
     setUploadProgress({ files: progressFiles });
 
-    let activeApplicantsCount = 0;
+    let currentApplicants = [...applicants];
+    let newApplicantsAdded = 0;
 
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
@@ -263,13 +264,30 @@ function App() {
           throw new Error('Received non-JSON response from server.');
         }
 
-        // Append new applicant and sort descending by score
-        setApplicants((prev) => {
-          const updated = [...prev, data];
-          return updated.sort((a, b) => b.match_score - a.match_score);
-        });
+        // Check if candidate email is already in the list (excluding placeholder emails)
+        const isDuplicate = data.email && data.email.toLowerCase() !== "unknown@example.com"
+          ? currentApplicants.some((a) => a.email && a.email.toLowerCase() === data.email.toLowerCase())
+          : false;
 
-        activeApplicantsCount += 1;
+        if (isDuplicate) {
+          currentApplicants = currentApplicants.map((a) =>
+            a.email && a.email.toLowerCase() === data.email.toLowerCase() ? data : a
+          );
+        } else {
+          currentApplicants.push(data);
+          newApplicantsAdded += 1;
+        }
+
+        // Update the applicants state using the updated local list sorted by match score
+        setApplicants([...currentApplicants].sort((a, b) => b.match_score - a.match_score));
+
+        // Update activeApplicant if they are the current drawer
+        setActiveApplicant((prevActive) => {
+          if (prevActive && prevActive.email && data.email && prevActive.email.toLowerCase() === data.email.toLowerCase()) {
+            return data;
+          }
+          return prevActive;
+        });
 
         // Update this file status to success
         setUploadProgress((prev) => {
@@ -294,10 +312,10 @@ function App() {
     }
 
     // Update local job applicant count once done
-    if (activeApplicantsCount > 0) {
+    if (newApplicantsAdded > 0) {
       setJobs((prev) => prev.map((j) => {
         if (j.id === activeJob.id) {
-          return { ...j, applicant_count: (j.applicant_count || 0) + activeApplicantsCount };
+          return { ...j, applicant_count: (j.applicant_count || 0) + newApplicantsAdded };
         }
         return j;
       }));
