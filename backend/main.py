@@ -252,7 +252,7 @@ def update_job(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Job position not found."
         )
-    if job.user_id is not None and job.user_id != current_user.id:
+    if job.user_id != current_user.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Not authorized to update this job."
@@ -278,10 +278,7 @@ def get_jobs(
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    from sqlalchemy import or_
-    jobs = db.query(models.Job).filter(
-        or_(models.Job.user_id == current_user.id, models.Job.user_id == None)
-    ).all()
+    jobs = db.query(models.Job).filter(models.Job.user_id == current_user.id).all()
     # Add applicant_count dynamically
     for job in jobs:
         count = db.query(models.Applicant).filter(models.Applicant.job_id == job.id).count()
@@ -301,7 +298,7 @@ def delete_job(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Job not found."
         )
-    if job.user_id is not None and job.user_id != current_user.id:
+    if job.user_id != current_user.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Not authorized to delete this job."
@@ -325,7 +322,7 @@ def get_job_applicants(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Job not found."
         )
-    if job.user_id is not None and job.user_id != current_user.id:
+    if job.user_id != current_user.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Not authorized to view applicants for this job."
@@ -354,7 +351,7 @@ async def screen_applicant_resume(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Job position not found."
         )
-    if job.user_id is not None and job.user_id != current_user.id:
+    if job.user_id != current_user.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Not authorized to screen applicants for this job."
@@ -454,7 +451,7 @@ async def rescreen_applicant_resume(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Job position not found."
         )
-    if job.user_id is not None and job.user_id != current_user.id:
+    if job.user_id != current_user.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Not authorized to rescreen applicants for this job."
