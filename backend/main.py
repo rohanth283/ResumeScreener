@@ -19,9 +19,20 @@ import models
 import schemas
 import auth
 from database import engine, get_db
+from sqlalchemy import text
 
 # Automatically initialize SQLite database tables
 models.Base.metadata.create_all(bind=engine)
+
+def run_migrations():
+    with engine.begin() as conn:
+        try:
+            conn.execute(text("ALTER TABLE jobs ADD COLUMN user_id INTEGER REFERENCES users(id) ON DELETE CASCADE"))
+            print("MIGRATION SUCCESS: Added user_id column to jobs table.")
+        except Exception as e:
+            print(f"MIGRATION INFO: Skip user_id column addition (likely already exists): {e}")
+
+run_migrations()
 
 app = FastAPI(title="Smart Resume Screener")
 
@@ -211,6 +222,7 @@ def create_job(
     db: Session = Depends(get_db)
 ):
     db_job = models.Job(
+        user_id=current_user.id,
         title=job_data.title,
         department=job_data.department,
         location=job_data.location,
@@ -240,6 +252,11 @@ def update_job(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Job position not found."
         )
+    if job.user_id is not None and job.user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to update this job."
+        )
     
     job.title = job_data.title
     job.department = job_data.department
@@ -261,7 +278,10 @@ def get_jobs(
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    jobs = db.query(models.Job).all()
+    from sqlalchemy import or_
+    jobs = db.query(models.Job).filter(
+        or_(models.Job.user_id == current_user.id, models.Job.user_id == None)
+    ).all()
     # Add applicant_count dynamically
     for job in jobs:
         count = db.query(models.Applicant).filter(models.Applicant.job_id == job.id).count()
@@ -281,6 +301,11 @@ def delete_job(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Job not found."
         )
+    if job.user_id is not None and job.user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to delete this job."
+        )
     db.delete(job)
     db.commit()
     return {"message": "Job deleted successfully."}
@@ -299,6 +324,11 @@ def get_job_applicants(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Job not found."
+        )
+    if job.user_id is not None and job.user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to view applicants for this job."
         )
     
     # Return applicants sorted by match_score descending
@@ -323,6 +353,11 @@ async def screen_applicant_resume(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Job position not found."
+        )
+    if job.user_id is not None and job.user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to screen applicants for this job."
         )
 
     # Validate file type
@@ -418,6 +453,11 @@ async def rescreen_applicant_resume(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Job position not found."
+        )
+    if job.user_id is not None and job.user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to rescreen applicants for this job."
         )
         
     applicant = db.query(models.Applicant).filter(

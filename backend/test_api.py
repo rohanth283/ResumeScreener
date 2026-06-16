@@ -374,5 +374,51 @@ def test_screen_duplicate_applicants():
         main.screen_resume = original_screen
 
 
+def test_multi_tenant_job_isolation():
+    # 1. Signup Recruiter A
+    signup_a = {"email": "recruiter_a@example.com", "password": "password123", "name": "Recruiter A"}
+    res = client.post("/auth/signup", json=signup_a)
+    assert res.status_code == 200
+    token_a = res.json()["access_token"]
+    headers_a = {"Authorization": f"Bearer {token_a}"}
+
+    # 2. Signup Recruiter B
+    signup_b = {"email": "recruiter_b@example.com", "password": "password123", "name": "Recruiter B"}
+    res = client.post("/auth/signup", json=signup_b)
+    assert res.status_code == 200
+    token_b = res.json()["access_token"]
+    headers_b = {"Authorization": f"Bearer {token_b}"}
+
+    # 3. Recruiter A creates a job
+    job_payload = {"title": "Recruiter A Job", "description": "FastAPI expert Required"}
+    res = client.post("/jobs", json=job_payload, headers=headers_a)
+    assert res.status_code == 200
+    job_id = res.json()["id"]
+
+    # 4. Verify Recruiter B cannot see this job in their job list
+    res = client.get("/jobs", headers=headers_b)
+    assert res.status_code == 200
+    jobs_b = res.json()
+    assert len(jobs_b) == 0
+
+    # 5. Verify Recruiter B cannot update this job (403 Forbidden)
+    res = client.put(f"/jobs/{job_id}", json={"title": "Hacked", "description": "Hacked description"}, headers=headers_b)
+    assert res.status_code == 403
+
+    # 6. Verify Recruiter B cannot screen a candidate to this job (403 Forbidden)
+    resume = ("resume.txt", b"fastapi resume details", "text/plain")
+    res = client.post(f"/jobs/{job_id}/screen", files={"resume_file": resume}, headers=headers_b)
+    assert res.status_code == 403
+
+    # 7. Verify Recruiter B cannot view applicants of this job (403 Forbidden)
+    res = client.get(f"/jobs/{job_id}/applicants", headers=headers_b)
+    assert res.status_code == 403
+
+    # 8. Verify Recruiter B cannot delete this job (403 Forbidden)
+    res = client.delete(f"/jobs/{job_id}", headers=headers_b)
+    assert res.status_code == 403
+
+
+
 
 

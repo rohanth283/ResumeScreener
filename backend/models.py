@@ -13,10 +13,14 @@ class User(Base):
     role = Column(String, default="Viewer", nullable=False)  # Viewer, Recruiter, Admin (ignored in this version)
     auth_provider = Column(String, default="local", nullable=False)  # local, google
 
+    # Relationship to jobs with cascade delete
+    jobs = relationship("Job", back_populates="user", cascade="all, delete-orphan")
+
 class Job(Base):
     __tablename__ = "jobs"
 
     id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=True) # nullable=True for backwards-compatibility migration
     title = Column(String, nullable=False)
     department = Column(String, nullable=True)
     location = Column(String, nullable=True)
@@ -24,6 +28,9 @@ class Job(Base):
     description = Column(String, nullable=False)
     priority_skills = Column(String, nullable=True)  # Comma-separated list of priority skills
     created_at = Column(DateTime, default=datetime.utcnow)
+
+    # Relationship to user
+    user = relationship("User", back_populates="jobs")
 
     # Relationship to applicants with cascade delete
     applicants = relationship("Applicant", back_populates="job", cascade="all, delete-orphan")
