@@ -419,6 +419,50 @@ def test_multi_tenant_job_isolation():
     assert res.status_code == 403
 
 
+def test_applicant_review_toggle_and_isolation():
+    # 1. Signup Recruiter A and create job
+    signup_a = {"email": "recruiter_a@example.com", "password": "password123", "name": "Recruiter A"}
+    res = client.post("/auth/signup", json=signup_a)
+    assert res.status_code == 200
+    token_a = res.json()["access_token"]
+    headers_a = {"Authorization": f"Bearer {token_a}"}
+
+    job_payload = {"title": "React Engineer", "description": "Needs React skill"}
+    res = client.post("/jobs", json=job_payload, headers=headers_a)
+    assert res.status_code == 200
+    job_id = res.json()["id"]
+
+    # 2. Screen candidate under Recruiter A's job
+    resume = ("resume.txt", b"react resume details", "text/plain")
+    res = client.post(f"/jobs/{job_id}/screen", files={"resume_file": resume}, headers=headers_a)
+    assert res.status_code == 200
+    applicant = res.json()
+    applicant_id = applicant["id"]
+    assert applicant["is_reviewed"] is False
+
+    # 3. Signup Recruiter B
+    signup_b = {"email": "recruiter_b@example.com", "password": "password123", "name": "Recruiter B"}
+    res = client.post("/auth/signup", json=signup_b)
+    assert res.status_code == 200
+    token_b = res.json()["access_token"]
+    headers_b = {"Authorization": f"Bearer {token_b}"}
+
+    # 4. Verify Recruiter B cannot toggle review for Recruiter A's candidate (403 Forbidden)
+    res = client.put(f"/jobs/{job_id}/applicants/{applicant_id}/review", headers=headers_b)
+    assert res.status_code == 403
+
+    # 5. Verify Recruiter A can toggle review successfully (True)
+    res = client.put(f"/jobs/{job_id}/applicants/{applicant_id}/review", headers=headers_a)
+    assert res.status_code == 200
+    assert res.json()["is_reviewed"] is True
+
+    # 6. Verify Recruiter A can toggle review back (False)
+    res = client.put(f"/jobs/{job_id}/applicants/{applicant_id}/review", headers=headers_a)
+    assert res.status_code == 200
+    assert res.json()["is_reviewed"] is False
+
+
+
 
 
 
