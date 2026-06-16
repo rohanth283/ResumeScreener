@@ -30,6 +30,7 @@ function App() {
 
   const [loading, setLoading] = useState(false);
   const [jobsLoading, setJobsLoading] = useState(() => !!localStorage.getItem('auth_token'));
+  const [applicantsLoading, setApplicantsLoading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(null);
   const [error, setError] = useState(null);
 
@@ -71,6 +72,7 @@ function App() {
   };
 
   const fetchApplicants = async (jobId) => {
+    setApplicantsLoading(true);
     try {
       const response = await fetch(`${API_URL}/jobs/${jobId}/applicants`, {
         headers: { 'Authorization': `Bearer ${token}` }
@@ -84,6 +86,8 @@ function App() {
       setApplicants(data);
     } catch (err) {
       console.error(err.message);
+    } finally {
+      setApplicantsLoading(false);
     }
   };
 
@@ -115,6 +119,7 @@ function App() {
 
   const handleSelectJob = (job) => {
     setActiveJob(job);
+    setApplicants([]);
     fetchApplicants(job.id);
   };
 
@@ -581,7 +586,12 @@ function App() {
               </div>
             )}
             
-            {applicants.length === 0 ? (
+            {applicantsLoading ? (
+              <div className="applicants-loading">
+                <span className="loading-spinner" />
+                <p>Loading candidate analysis...</p>
+              </div>
+            ) : applicants.length === 0 ? (
               <div className="empty-applicants">
                 <p>No candidates have been screened for this position yet.</p>
                 <button
