@@ -20,14 +20,30 @@ export default function EmailTemplateDrawer({
     'Recruiting Team'
   );
 
-  const getMinDateTime = () => {
-    const now = new Date(Date.now() + 2 * 60 * 1000); // 2 mins in future to avoid instant race
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const day = String(now.getDate()).padStart(2, '0');
-    const hours = String(now.getHours()).padStart(2, '0');
-    const minutes = String(now.getMinutes()).padStart(2, '0');
+  const getISTDateTimeString = (date) => {
+    // Convert a given Date object to a local-like YYYY-MM-DDTHH:MM string representing IST (UTC+5:30)
+    const utc = date.getTime() + date.getTimezoneOffset() * 60000;
+    const istDate = new Date(utc + 3600000 * 5.5);
+    const year = istDate.getFullYear();
+    const month = String(istDate.getMonth() + 1).padStart(2, '0');
+    const day = String(istDate.getDate()).padStart(2, '0');
+    const hours = String(istDate.getHours()).padStart(2, '0');
+    const minutes = String(istDate.getMinutes()).padStart(2, '0');
     return `${year}-${month}-${day}T${hours}:${minutes}`;
+  };
+
+  const getMinDateTime = () => {
+    return getISTDateTimeString(new Date(Date.now() + 2 * 60 * 1000)); // 2 mins in future in IST
+  };
+
+  const parseISTToUTC = (istString) => {
+    if (!istString) return null;
+    const [datePart, timePart] = istString.split('T');
+    const [year, month, day] = datePart.split('-').map(Number);
+    const [hours, minutes] = timePart.split(':').map(Number);
+    // Create UTC representation first, then subtract 5.5 hours to align with actual UTC
+    const utcDate = new Date(Date.UTC(year, month - 1, day, hours, minutes));
+    return new Date(utcDate.getTime() - 5.5 * 3600000);
   };
 
   const [deliveryType, setDeliveryType] = useState('immediate');
@@ -88,7 +104,7 @@ export default function EmailTemplateDrawer({
       applicant_ids: selectedApplicants.map(app => app.id),
       subject_template: subjectTemplate,
       body_template: bodyTemplate,
-      send_at: deliveryType === 'scheduled' ? new Date(scheduleTime).toISOString() : null
+      send_at: deliveryType === 'scheduled' ? parseISTToUTC(scheduleTime).toISOString() : null
     };
 
     try {
@@ -292,7 +308,7 @@ export default function EmailTemplateDrawer({
 
                 {deliveryType === 'scheduled' && (
                   <div className="schedule-time-picker email-input-group animate-slide-down">
-                    <label htmlFor="schedule-time-input">Send At Time (Local Time)</label>
+                    <label htmlFor="schedule-time-input">Send At Time (IST)</label>
                     <input
                       id="schedule-time-input"
                       type="datetime-local"
@@ -303,7 +319,7 @@ export default function EmailTemplateDrawer({
                       disabled={sending}
                     />
                     <span className="timezone-notice">
-                      Will be converted to UTC: <strong>{new Date(scheduleTime || Date.now()).toUTCString()}</strong>
+                      Selected Time (IST): <strong>{scheduleTime ? scheduleTime.replace('T', ' ') : ''}</strong> (UTC: {parseISTToUTC(scheduleTime)?.toUTCString()})
                     </span>
                   </div>
                 )}

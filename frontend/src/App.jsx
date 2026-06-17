@@ -846,8 +846,8 @@ function App() {
                   {emailsHistory.map((job) => {
                     const isExpanded = expandedEmailJobIds.includes(job.id);
                     const formattedDate = job.send_at
-                      ? new Date(job.send_at).toLocaleString()
-                      : new Date(job.created_at).toLocaleString();
+                      ? new Date(job.send_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) + ' IST'
+                      : new Date(job.created_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) + ' IST';
                     const statusClass = job.status === 'sent' ? 'success' : job.status === 'pending' ? 'pending' : 'failed';
                     const statusLabel = job.status === 'pending' ? 'Scheduled' : job.status === 'sent' ? 'Sent' : job.status === 'partial_failed' ? 'Partial Success' : 'Failed';
                     
