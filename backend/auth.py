@@ -84,11 +84,79 @@ def send_email(to_email: str, subject: str, body_text: str, body_html: Optional[
         import smtplib
         from email.mime.multipart import MIMEMultipart
         from email.mime.text import MIMEText
+        from email.utils import formatdate, make_msgid
+
+        # Auto-generate a styled HTML body if none is provided
+        if not body_html and body_text:
+            paragraphs = body_text.strip().split("\n\n")
+            html_paragraphs = []
+            for p in paragraphs:
+                p_html = p.replace("\n", "<br>")
+                html_paragraphs.append(
+                    f"<p style='margin-top: 0; margin-bottom: 16px; color: #475569; font-size: 15px; line-height: 1.6;'>{p_html}</p>"
+                )
+            body_content = "\n".join(html_paragraphs)
+            body_html = f"""<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>{subject}</title>
+  <style>
+    body {{
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: #f8fafc;
+      margin: 0;
+      padding: 0;
+      -webkit-font-smoothing: antialiased;
+    }}
+    .wrapper {{
+      width: 100%;
+      background-color: #f8fafc;
+      padding: 40px 0;
+    }}
+    .container {{
+      max-width: 540px;
+      margin: 0 auto;
+      background-color: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 40px;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    }}
+    .footer {{
+      border-top: 1px solid #e2e8f0;
+      padding-top: 20px;
+      margin-top: 20px;
+      color: #94a3b8;
+      font-size: 13px;
+      line-height: 1.5;
+    }}
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="container">
+      {body_content}
+      <div class="footer">
+        <p style="margin: 0; color: #94a3b8; font-size: 13px;">Sent via <strong>Smart Resume Screener</strong></p>
+      </div>
+    </div>
+  </div>
+</body>
+</html>"""
 
         msg = MIMEMultipart("alternative")
         msg["Subject"] = subject
-        msg["From"] = smtp_from
         msg["To"] = to_email
+        msg["Date"] = formatdate(localtime=True)
+        msg["Message-ID"] = make_msgid()
+        msg["MIME-Version"] = "1.0"
+
+        # Use a professional display name to reduce spam rating
+        if "<" not in smtp_from and "@" in smtp_from:
+            msg["From"] = f"Smart Resume Screener <{smtp_from}>"
+        else:
+            msg["From"] = smtp_from
 
         msg.attach(MIMEText(body_text, "plain"))
         if body_html:
