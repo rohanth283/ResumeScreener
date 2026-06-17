@@ -41,6 +41,14 @@ def run_migrations():
     except Exception as e:
         print(f"MIGRATION INFO: Skip is_reviewed column addition (likely already exists): {e}")
 
+    # 3. Ensure results exists in scheduled_emails
+    try:
+        with engine.begin() as conn:
+            conn.execute(text("ALTER TABLE scheduled_emails ADD COLUMN results JSON"))
+        print("MIGRATION: Added results column to scheduled_emails.")
+    except Exception as e:
+        print(f"MIGRATION INFO: Skip results column addition (likely already exists): {e}")
+
     # 3. PostgreSQL Row-Level Security (RLS) configuration
     if not engine.url.drivername.startswith("sqlite"):
         try:
@@ -701,6 +709,21 @@ def send_bulk_emails(
             results.append({"applicant_id": app_id, "email": app.email, "status": "failed", "error": str(e)})
             failed_count += 1
 
+    # Log the immediate email outreach in the scheduled_emails database table
+    import datetime
+    scheduled_email = models.ScheduledEmail(
+        job_id=job_id,
+        applicant_ids=req.applicant_ids,
+        subject_template=req.subject_template,
+        body_template=req.body_template,
+        send_at=datetime.datetime.utcnow(),
+        status="sent" if failed_count == 0 else ("failed" if sent_count == 0 else "partial_failed"),
+        results=results,
+        error_message=f"{failed_count} emails failed to send." if failed_count > 0 else None
+    )
+    db.add(scheduled_email)
+    db.commit()
+
     return {
         "status": "sent",
         "sent_count": sent_count,
@@ -745,11 +768,17 @@ def send_scheduled_emails_cron(db: Session = Depends(get_db)):
 
         job_sent_success = True
         job_errors = []
+        job_results = []
+        cron_sent_count = 0
+        cron_failed_count = 0
 
         for app_id in email_job.applicant_ids:
             app = applicant_map.get(app_id)
             if not app:
-                job_errors.append(f"Candidate {app_id} not found under job.")
+                error_str = f"Candidate {app_id} not found under job."
+                job_errors.append(error_str)
+                job_results.append({"applicant_id": app_id, "status": "failed", "error": error_str})
+                cron_failed_count += 1
                 continue
 
             try:
@@ -769,18 +798,26 @@ def send_scheduled_emails_cron(db: Session = Depends(get_db)):
                                                       .replace("{email}", email_address)
 
                 auth.send_email(to_email=email_address, subject=rendered_subject, body_text=rendered_body)
+                job_results.append({"applicant_id": app_id, "email": email_address, "status": "success"})
+                cron_sent_count += 1
                 sent_count += 1
             except Exception as e:
                 job_sent_success = False
                 job_errors.append(f"Candidate {app_id}: {e}")
+                job_results.append({"applicant_id": app_id, "email": app.email, "status": "failed", "error": str(e)})
+                cron_failed_count += 1
                 failed_count += 1
 
-        if job_sent_success:
+        email_job.results = job_results
+        if cron_failed_count == 0:
             email_job.status = "sent"
             email_job.error_message = None
-        else:
+        elif cron_sent_count == 0:
             email_job.status = "failed"
             email_job.error_message = "; ".join(job_errors)
+        else:
+            email_job.status = "partial_failed"
+            email_job.error_message = f"{cron_failed_count} emails failed to send: " + "; ".join(job_errors)
 
         db.commit()
         processed_count += 1
@@ -796,6 +833,74 @@ def send_scheduled_emails_cron(db: Session = Depends(get_db)):
         "failed_emails_count": failed_count,
         "details": details
     }
+
+
+@app.get("/jobs/{job_id}/emails", response_model=list[schemas.ScheduledEmailResponse])
+def get_job_emails(
+    job_id: int,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    # Verify job exists and belongs to user
+    job = db.query(models.Job).filter(models.Job.id == job_id).first()
+    if not job:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Job position not found."
+        )
+    if job.user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to view emails for this job."
+        )
+
+    emails = db.query(models.ScheduledEmail).filter(
+        models.ScheduledEmail.job_id == job_id
+    ).order_by(models.ScheduledEmail.created_at.desc()).all()
+
+    return emails
+
+
+@app.delete("/jobs/{job_id}/emails/{email_job_id}")
+def delete_scheduled_email(
+    job_id: int,
+    email_job_id: int,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    # Verify job ownership
+    job = db.query(models.Job).filter(models.Job.id == job_id).first()
+    if not job:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Job position not found."
+        )
+    if job.user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to modify emails for this job."
+        )
+
+    email_job = db.query(models.ScheduledEmail).filter(
+        models.ScheduledEmail.id == email_job_id,
+        models.ScheduledEmail.job_id == job_id
+    ).first()
+    if not email_job:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Email record not found."
+        )
+
+    # Only pending emails can be cancelled
+    if email_job.status != "pending":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Only pending scheduled emails can be cancelled."
+        )
+
+    db.delete(email_job)
+    db.commit()
+    return {"message": "Scheduled email cancelled successfully."}
 
 
 if __name__ == "__main__":

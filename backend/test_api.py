@@ -590,6 +590,94 @@ def test_email_scheduling_and_cron():
         db.close()
 
 
+def test_email_history_and_cancellation():
+    # 1. Signup Recruiter A and create job
+    signup_a = {"email": "recruiter_a_history_test@example.com", "password": "password123", "name": "Recruiter A"}
+    res = client.post("/auth/signup", json=signup_a)
+    assert res.status_code == 200
+    token_a = res.json()["access_token"]
+    headers_a = {"Authorization": f"Bearer {token_a}"}
+
+    job_payload = {"title": "Python Dev", "description": "Needs Python"}
+    res = client.post("/jobs", json=job_payload, headers=headers_a)
+    assert res.status_code == 200
+    job_id = res.json()["id"]
+
+    # 2. Screen candidate
+    resume = ("resume.txt", b"Jane Doe\nEmail: jane@example.com\nPython skills", "text/plain")
+    res = client.post(f"/jobs/{job_id}/screen", files={"resume_file": resume}, headers=headers_a)
+    assert res.status_code == 200
+    applicant_id = res.json()["id"]
+
+    # 3. Send immediate email (creates a "sent" log entry)
+    email_payload_immediate = {
+        "applicant_ids": [applicant_id],
+        "subject_template": "Immediate Update",
+        "body_template": "Hello {name}, direct."
+    }
+    res_immediate = client.post(f"/jobs/{job_id}/applicants/send-email", json=email_payload_immediate, headers=headers_a)
+    assert res_immediate.status_code == 200
+    
+    # 4. Schedule a future email (creates a "pending" log entry)
+    import datetime
+    future_time = (datetime.datetime.utcnow() + datetime.timedelta(hours=1)).isoformat() + "Z"
+    email_payload_scheduled = {
+        "applicant_ids": [applicant_id],
+        "subject_template": "Scheduled Update",
+        "body_template": "Hello {name}, later.",
+        "send_at": future_time
+    }
+    res_scheduled = client.post(f"/jobs/{job_id}/applicants/send-email", json=email_payload_scheduled, headers=headers_a)
+    assert res_scheduled.status_code == 200
+
+    # 5. Fetch email list for Job (should show 2 items: 1 sent, 1 pending)
+    res_list = client.get(f"/jobs/{job_id}/emails", headers=headers_a)
+    assert res_list.status_code == 200
+    emails = res_list.json()
+    assert len(emails) == 2
+    # Ordered by created_at desc, so the scheduled one (created later) should be first
+    assert emails[0]["subject_template"] == "Scheduled Update"
+    assert emails[0]["status"] == "pending"
+    assert emails[1]["subject_template"] == "Immediate Update"
+    assert emails[1]["status"] == "sent"
+    
+    scheduled_email_id = emails[0]["id"]
+    immediate_email_id = emails[1]["id"]
+
+    # 6. Signup Recruiter B
+    signup_b = {"email": "recruiter_b_history_test@example.com", "password": "password123", "name": "Recruiter B"}
+    res = client.post("/auth/signup", json=signup_b)
+    assert res.status_code == 200
+    token_b = res.json()["access_token"]
+    headers_b = {"Authorization": f"Bearer {token_b}"}
+
+    # 7. Recruiter B tries to get emails for Recruiter A's job (403 Forbidden)
+    res_forbidden_list = client.get(f"/jobs/{job_id}/emails", headers=headers_b)
+    assert res_forbidden_list.status_code == 403
+
+    # 8. Recruiter B tries to delete Recruiter A's scheduled email (403 Forbidden)
+    res_forbidden_delete = client.delete(f"/jobs/{job_id}/emails/{scheduled_email_id}", headers=headers_b)
+    assert res_forbidden_delete.status_code == 403
+
+    # 9. Recruiter A tries to delete the immediate (sent) email (400 Bad Request - only pending can be cancelled)
+    res_bad_delete = client.delete(f"/jobs/{job_id}/emails/{immediate_email_id}", headers=headers_a)
+    assert res_bad_delete.status_code == 400
+    assert "Only pending scheduled emails can be cancelled" in res_bad_delete.json()["detail"]
+
+    # 10. Recruiter A deletes the scheduled (pending) email successfully (200 OK)
+    res_ok_delete = client.delete(f"/jobs/{job_id}/emails/{scheduled_email_id}", headers=headers_a)
+    assert res_ok_delete.status_code == 200
+    assert res_ok_delete.json() == {"message": "Scheduled email cancelled successfully."}
+
+    # 11. Fetch email list again (should only have 1 item left - the sent one)
+    res_list_after = client.get(f"/jobs/{job_id}/emails", headers=headers_a)
+    assert res_list_after.status_code == 200
+    emails_after = res_list_after.json()
+    assert len(emails_after) == 1
+    assert emails_after[0]["id"] == immediate_email_id
+
+
+
 
 
 

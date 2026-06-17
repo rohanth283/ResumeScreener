@@ -67,6 +67,7 @@ class ScheduledEmail(Base):
     send_at = Column(DateTime, nullable=False)  # In UTC time
     status = Column(String, default="pending", nullable=False)  # pending, sent, failed
     error_message = Column(String, nullable=True)
+    results = Column(JSON, nullable=True)  # Stores individual recipient status list
     created_at = Column(DateTime, default=datetime.utcnow)
 
     job = relationship("Job")

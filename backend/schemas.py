@@ -96,3 +96,19 @@ class BulkEmailRequest(BaseModel):
     send_at: Optional[str] = None
 
 
+class ScheduledEmailResponse(BaseModel):
+    id: int
+    job_id: int
+    applicant_ids: List[int]
+    subject_template: str
+    body_template: str
+    send_at: datetime
+    status: str
+    error_message: Optional[str] = None
+    results: Optional[List[dict]] = None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+

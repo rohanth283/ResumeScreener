@@ -37,6 +37,12 @@ function App() {
   const [uploadProgress, setUploadProgress] = useState(null);
   const [error, setError] = useState(null);
 
+  // Email history states
+  const [activeTab, setActiveTab] = useState('candidates'); // 'candidates' or 'emails'
+  const [emailsHistory, setEmailsHistory] = useState([]);
+  const [emailsLoading, setEmailsLoading] = useState(false);
+  const [expandedEmailJobIds, setExpandedEmailJobIds] = useState([]);
+
   // Password Reset View States
   const [resetToken, setResetToken] = useState(() => {
     const params = new URLSearchParams(window.location.search);
@@ -94,6 +100,53 @@ function App() {
     }
   };
 
+  const fetchEmailsHistory = async (jobId) => {
+    setEmailsLoading(true);
+    try {
+      const response = await fetch(`${API_URL}/jobs/${jobId}/emails`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (response.status === 401) {
+        handleLogout();
+        return;
+      }
+      if (!response.ok) throw new Error('Failed to load email history.');
+      const data = await response.json();
+      setEmailsHistory(data);
+    } catch (err) {
+      console.error(err.message);
+    } finally {
+      setEmailsLoading(false);
+    }
+  };
+
+  const handleCancelEmail = async (emailJobId) => {
+    if (!window.confirm("Are you sure you want to cancel this scheduled email?")) return;
+    try {
+      const response = await fetch(`${API_URL}/jobs/${activeJob.id}/emails/${emailJobId}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (response.status === 401) {
+        handleLogout();
+        return;
+      }
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.detail || 'Could not cancel scheduled email.');
+      
+      // Refresh history
+      fetchEmailsHistory(activeJob.id);
+    } catch (err) {
+      alert(err.message);
+    }
+  };
+
+  const handleToggleExpandEmailJob = (id) => {
+    setExpandedEmailJobIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
+  };
+
   const handleAuthSuccess = ({ token, user }) => {
     setToken(token);
     setUser(user);
@@ -112,6 +165,9 @@ function App() {
     setRescreenApplicant(null);
     setSelectedApplicantIds([]);
     setIsEmailDrawerOpen(false);
+    setActiveTab('candidates');
+    setEmailsHistory([]);
+    setExpandedEmailJobIds([]);
     localStorage.removeItem('auth_token');
     localStorage.removeItem('auth_user');
   };
@@ -126,6 +182,8 @@ function App() {
     setActiveJob(job);
     setApplicants([]);
     setSelectedApplicantIds([]);
+    setActiveTab('candidates');
+    setExpandedEmailJobIds([]);
     fetchApplicants(job.id);
   };
 
@@ -643,102 +701,252 @@ function App() {
             )}
           </div>
 
-          <div className="applicants-section">
-            <div className="applicants-section-header">
-              <h4>Screened Candidates</h4>
-              {selectedApplicantIds.length > 0 && (
-                <button
-                  type="button"
-                  className="btn-primary email-selected-btn"
-                  onClick={() => setIsEmailDrawerOpen(true)}
-                  style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
-                >
-                  📧 Email Selected ({selectedApplicantIds.length})
-                </button>
+          <div className="tab-navigation">
+            <button
+              type="button"
+              className={`tab-button ${activeTab === 'candidates' ? 'active' : ''}`}
+              onClick={() => setActiveTab('candidates')}
+            >
+              👥 Candidates
+            </button>
+            <button
+              type="button"
+              className={`tab-button ${activeTab === 'emails' ? 'active' : ''}`}
+              onClick={() => {
+                setActiveTab('emails');
+                fetchEmailsHistory(activeJob.id);
+              }}
+            >
+              ✉️ Email History
+            </button>
+          </div>
+
+          {activeTab === 'candidates' ? (
+            <div className="applicants-section">
+              <div className="applicants-section-header">
+                <h4>Screened Candidates</h4>
+                {selectedApplicantIds.length > 0 && (
+                  <button
+                    type="button"
+                    className="btn-primary email-selected-btn"
+                    onClick={() => setIsEmailDrawerOpen(true)}
+                    style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+                  >
+                    📧 Email Selected ({selectedApplicantIds.length})
+                  </button>
+                )}
+              </div>
+              {error && (
+                <div className="error-banner" style={{ marginBottom: '16px' }}>
+                  <strong>Error:</strong> {error}
+                </div>
+              )}
+              
+              {applicantsLoading ? (
+                <div className="applicants-loading">
+                  <span className="loading-spinner" />
+                  <p>Loading candidate analysis...</p>
+                </div>
+              ) : applicants.length === 0 ? (
+                <div className="empty-applicants">
+                  <p>No candidates have been screened for this position yet.</p>
+                  <button
+                    type="button"
+                    className="btn-primary"
+                    onClick={() => setIsUploadModalOpen(true)}
+                  >
+                    Screen First Candidate
+                  </button>
+                </div>
+              ) : (
+                <div className="table-wrapper">
+                  <table className="applicants-table">
+                    <thead>
+                      <tr>
+                        <th style={{ width: '40px', textAlign: 'center' }}>
+                          <input
+                            type="checkbox"
+                            checked={applicants.length > 0 && selectedApplicantIds.length === applicants.length}
+                            onChange={handleToggleSelectAllApplicants}
+                          />
+                        </th>
+                        <th>Candidate</th>
+                        <th>Score</th>
+                        <th>Filename</th>
+                        <th>Date Screened</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {applicants.map((app) => {
+                        const scoreClass = app.match_score >= 80 ? 'excellent' : app.match_score >= 60 ? 'good' : 'poor';
+                        return (
+                          <tr
+                            key={app.id}
+                            className={`applicant-row ${selectedApplicantIds.includes(app.id) ? 'selected' : ''}`}
+                            onClick={() => handleSelectApplicant(app)}
+                          >
+                            <td onClick={(e) => e.stopPropagation()} style={{ textAlign: 'center' }}>
+                              <input
+                                type="checkbox"
+                                checked={selectedApplicantIds.includes(app.id)}
+                                onChange={() => handleToggleSelectApplicant(app.id)}
+                              />
+                            </td>
+                            <td>
+                              <div className="candidate-name-cell">
+                                {app.name || 'Unknown Candidate'}
+                                {app.is_reviewed && (
+                                  <span className="reviewed-checkmark-badge" title="Manually Audited & Reviewed">
+                                    ✓ Reviewed
+                                  </span>
+                                )}
+                              </div>
+                              <div className="candidate-email-cell">{app.email}</div>
+                            </td>
+                            <td>
+                              <span className={`score-badge-pill ${scoreClass}`}>
+                                {app.match_score}%
+                              </span>
+                            </td>
+                            <td>{app.resume_filename}</td>
+                            <td>{new Date(app.created_at).toLocaleDateString()}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
               )}
             </div>
-            {error && (
-              <div className="error-banner" style={{ marginBottom: '16px' }}>
-                <strong>Error:</strong> {error}
-              </div>
-            )}
-            
-            {applicantsLoading ? (
-              <div className="applicants-loading">
-                <span className="loading-spinner" />
-                <p>Loading candidate analysis...</p>
-              </div>
-            ) : applicants.length === 0 ? (
-              <div className="empty-applicants">
-                <p>No candidates have been screened for this position yet.</p>
+          ) : (
+            <div className="emails-history-section">
+              <div className="emails-section-header">
+                <h4>Email History & Queues</h4>
                 <button
                   type="button"
-                  className="btn-primary"
-                  onClick={() => setIsUploadModalOpen(true)}
+                  className="btn-secondary"
+                  onClick={() => fetchEmailsHistory(activeJob.id)}
+                  style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', fontSize: '13px' }}
                 >
-                  Screen First Candidate
+                  ↻ Refresh
                 </button>
               </div>
-            ) : (
-              <div className="table-wrapper">
-                <table className="applicants-table">
-                  <thead>
-                    <tr>
-                      <th style={{ width: '40px', textAlign: 'center' }}>
-                        <input
-                          type="checkbox"
-                          checked={applicants.length > 0 && selectedApplicantIds.length === applicants.length}
-                          onChange={handleToggleSelectAllApplicants}
-                        />
-                      </th>
-                      <th>Candidate</th>
-                      <th>Score</th>
-                      <th>Filename</th>
-                      <th>Date Screened</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {applicants.map((app) => {
-                      const scoreClass = app.match_score >= 80 ? 'excellent' : app.match_score >= 60 ? 'good' : 'poor';
-                      return (
-                        <tr
-                          key={app.id}
-                          className={`applicant-row ${selectedApplicantIds.includes(app.id) ? 'selected' : ''}`}
-                          onClick={() => handleSelectApplicant(app)}
-                        >
-                          <td onClick={(e) => e.stopPropagation()} style={{ textAlign: 'center' }}>
-                            <input
-                              type="checkbox"
-                              checked={selectedApplicantIds.includes(app.id)}
-                              onChange={() => handleToggleSelectApplicant(app.id)}
-                            />
-                          </td>
-                          <td>
-                            <div className="candidate-name-cell">
-                              {app.name || 'Unknown Candidate'}
-                              {app.is_reviewed && (
-                                <span className="reviewed-checkmark-badge" title="Manually Audited & Reviewed">
-                                  ✓ Reviewed
-                                </span>
-                              )}
-                            </div>
-                            <div className="candidate-email-cell">{app.email}</div>
-                          </td>
-                          <td>
-                            <span className={`score-badge-pill ${scoreClass}`}>
-                              {app.match_score}%
+
+              {emailsLoading ? (
+                <div className="applicants-loading">
+                  <span className="loading-spinner" />
+                  <p>Loading email history...</p>
+                </div>
+              ) : emailsHistory.length === 0 ? (
+                <div className="empty-applicants">
+                  <p>No email outreach logs found for this position yet.</p>
+                </div>
+              ) : (
+                <div className="emails-history-list">
+                  {emailsHistory.map((job) => {
+                    const isExpanded = expandedEmailJobIds.includes(job.id);
+                    const formattedDate = job.send_at
+                      ? new Date(job.send_at).toLocaleString()
+                      : new Date(job.created_at).toLocaleString();
+                    const statusClass = job.status === 'sent' ? 'success' : job.status === 'pending' ? 'pending' : 'failed';
+                    const statusLabel = job.status === 'pending' ? 'Scheduled' : job.status === 'sent' ? 'Sent' : job.status === 'partial_failed' ? 'Partial Success' : 'Failed';
+                    
+                    return (
+                      <div key={job.id} className={`email-history-card ${isExpanded ? 'expanded' : ''}`}>
+                        <div className="email-card-header" onClick={() => handleToggleExpandEmailJob(job.id)}>
+                          <div className="card-header-left">
+                            <span className={`status-badge ${statusClass}`}>{statusLabel}</span>
+                            <span className="delivery-time">
+                              {job.status === 'pending' ? 'Scheduled for: ' : 'Sent: '}{formattedDate}
                             </span>
-                          </td>
-                          <td>{app.resume_filename}</td>
-                          <td>{new Date(app.created_at).toLocaleDateString()}</td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
+                          </div>
+                          <div className="card-header-right">
+                            {job.status === 'pending' && (
+                              <button
+                                type="button"
+                                className="cancel-schedule-btn"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleCancelEmail(job.id);
+                                }}
+                              >
+                                Cancel Schedule
+                              </button>
+                            )}
+                            <span className="toggle-indicator">{isExpanded ? '▲' : '▼'}</span>
+                          </div>
+                        </div>
+
+                        <div className="email-card-summary">
+                          <div className="summary-field">
+                            <span className="field-label">Subject:</span>
+                            <span className="field-value text-truncate">{job.subject_template}</span>
+                          </div>
+                          <div className="summary-field">
+                            <span className="field-label">Recipients:</span>
+                            <span className="field-value">
+                              {job.applicant_ids?.length || 0} candidate(s)
+                            </span>
+                          </div>
+                        </div>
+
+                        {isExpanded && (
+                          <div className="email-card-details">
+                            <div className="details-group">
+                              <h5>Subject Template</h5>
+                              <div className="template-preview-box">{job.subject_template}</div>
+                            </div>
+                            
+                            <div className="details-group">
+                              <h5>Body Template</h5>
+                              <pre className="template-preview-box body-preview">{job.body_template}</pre>
+                            </div>
+
+                            {job.error_message && (
+                              <div className="error-banner" style={{ margin: '12px 0 0' }}>
+                                <strong>Job Errors:</strong> {job.error_message}
+                              </div>
+                            )}
+
+                            <div className="details-group">
+                              <h5>Recipient Breakdown</h5>
+                              <div className="recipients-breakdown-list">
+                                {job.results && job.results.length > 0 ? (
+                                  job.results.map((res, index) => (
+                                    <div key={index} className="recipient-breakdown-row">
+                                      <div className="recipient-info">
+                                        <span className="recipient-email">{res.email}</span>
+                                      </div>
+                                      <div className="recipient-status">
+                                        <span className={`status-pill ${res.status}`}>
+                                          {res.status}
+                                        </span>
+                                        {res.error && (
+                                          <span className="recipient-error" title={res.error}>
+                                            ({res.error})
+                                          </span>
+                                        )}
+                                      </div>
+                                    </div>
+                                  ))
+                                ) : (
+                                  <div className="recipients-pending-message">
+                                    Status of individual dispatches will update after the email is sent.
+                                    <br />
+                                    Applicant IDs queued: {JSON.stringify(job.applicant_ids)}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
 
@@ -787,6 +995,8 @@ function App() {
         onSentComplete={() => {
           setIsEmailDrawerOpen(false);
           setSelectedApplicantIds([]);
+          fetchApplicants(activeJob.id);
+          fetchEmailsHistory(activeJob.id);
         }}
       />
     </div>
