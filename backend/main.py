@@ -835,6 +835,34 @@ def send_scheduled_emails_cron(db: Session = Depends(get_db)):
     }
 
 
+import asyncio
+import sys
+
+async def poll_scheduled_emails_periodic():
+    # Wait 5 seconds after startup before first run
+    await asyncio.sleep(5)
+    while True:
+        try:
+            from database import SessionLocal
+            db = SessionLocal()
+            try:
+                res = send_scheduled_emails_cron(db)
+                if res and res.get("processed_jobs", 0) > 0:
+                    print(f"BACKGROUND POLLER: Processed {res['processed_jobs']} scheduled email jobs. Sent: {res['sent_emails_count']}, Failed: {res['failed_emails_count']}")
+            finally:
+                db.close()
+        except Exception as e:
+            print(f"Background scheduled email poller error: {e}")
+        # Poll every 15 seconds to ensure fast delivery
+        await asyncio.sleep(15)
+
+if "pytest" not in sys.modules:
+    @app.on_event("startup")
+    async def startup_event():
+        asyncio.create_task(poll_scheduled_emails_periodic())
+
+
+
 @app.get("/jobs/{job_id}/emails", response_model=list[schemas.ScheduledEmailResponse])
 def get_job_emails(
     job_id: int,
