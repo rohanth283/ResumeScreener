@@ -615,7 +615,48 @@ def send_bulk_emails(
             detail="Not authorized to access this job."
         )
 
-    # 2. Retrieve applicants matching job_id and requested ids
+    # 2. Check if send_at is set for scheduling
+    if req.send_at and req.send_at.strip():
+        import datetime
+        try:
+            # Parse ISO UTC string
+            send_at_str = req.send_at.strip()
+            if send_at_str.endswith("Z"):
+                send_at_str = send_at_str[:-1] + "+00:00"
+            send_at_dt = datetime.datetime.fromisoformat(send_at_str).astimezone(datetime.timezone.utc).replace(tzinfo=None)
+        except Exception as e:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Invalid date-time format for send_at: {e}"
+            )
+
+        # Validate that send_at is in the future (at least 30 seconds from now)
+        now_utc = datetime.datetime.utcnow()
+        if send_at_dt <= now_utc + datetime.timedelta(seconds=30):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Scheduled time must be at least 30 seconds in the future."
+            )
+
+        # Store in scheduled_emails table
+        scheduled_email = models.ScheduledEmail(
+            job_id=job_id,
+            applicant_ids=req.applicant_ids,
+            subject_template=req.subject_template,
+            body_template=req.body_template,
+            send_at=send_at_dt,
+            status="pending"
+        )
+        db.add(scheduled_email)
+        db.commit()
+        db.refresh(scheduled_email)
+
+        return {
+            "status": "scheduled",
+            "message": f"Successfully scheduled {len(req.applicant_ids)} emails to be sent at {req.send_at} UTC."
+        }
+
+    # 3. Retrieve applicants matching job_id and requested ids (immediate sending logic)
     applicants = db.query(models.Applicant).filter(
         models.Applicant.job_id == job_id,
         models.Applicant.id.in_(req.applicant_ids)
@@ -661,9 +702,99 @@ def send_bulk_emails(
             failed_count += 1
 
     return {
+        "status": "sent",
         "sent_count": sent_count,
         "failed_count": failed_count,
         "results": results
+    }
+
+
+@app.post("/jobs/cron/send-scheduled-emails")
+def send_scheduled_emails_cron(db: Session = Depends(get_db)):
+    import datetime
+    now_utc = datetime.datetime.utcnow()
+
+    # Find pending scheduled emails that are due
+    due_emails = db.query(models.ScheduledEmail).filter(
+        models.ScheduledEmail.status == "pending",
+        models.ScheduledEmail.send_at <= now_utc
+    ).all()
+
+    processed_count = 0
+    sent_count = 0
+    failed_count = 0
+    details = []
+
+    for email_job in due_emails:
+        # Retrieve job
+        job = db.query(models.Job).filter(models.Job.id == email_job.job_id).first()
+        if not job:
+            email_job.status = "failed"
+            email_job.error_message = "Linked job position not found."
+            db.commit()
+            details.append({"job_id": email_job.id, "status": "failed", "error": "Job not found"})
+            failed_count += 1
+            continue
+
+        # Retrieve applicants
+        applicants = db.query(models.Applicant).filter(
+            models.Applicant.job_id == email_job.job_id,
+            models.Applicant.id.in_(email_job.applicant_ids)
+        ).all()
+        applicant_map = {a.id: a for a in applicants}
+
+        job_sent_success = True
+        job_errors = []
+
+        for app_id in email_job.applicant_ids:
+            app = applicant_map.get(app_id)
+            if not app:
+                job_errors.append(f"Candidate {app_id} not found under job.")
+                continue
+
+            try:
+                name = app.name or "Candidate"
+                job_title = job.title or "Position"
+                score_str = f"{app.match_score}%" if app.match_score is not None else "N/A"
+                email_address = app.email
+
+                rendered_subject = email_job.subject_template.replace("{name}", name)\
+                                                            .replace("{job_title}", job_title)\
+                                                            .replace("{score}", score_str)\
+                                                            .replace("{email}", email_address)
+
+                rendered_body = email_job.body_template.replace("{name}", name)\
+                                                      .replace("{job_title}", job_title)\
+                                                      .replace("{score}", score_str)\
+                                                      .replace("{email}", email_address)
+
+                auth.send_email(to_email=email_address, subject=rendered_subject, body_text=rendered_body)
+                sent_count += 1
+            except Exception as e:
+                job_sent_success = False
+                job_errors.append(f"Candidate {app_id}: {e}")
+                failed_count += 1
+
+        if job_sent_success:
+            email_job.status = "sent"
+            email_job.error_message = None
+        else:
+            email_job.status = "failed"
+            email_job.error_message = "; ".join(job_errors)
+
+        db.commit()
+        processed_count += 1
+        details.append({
+            "scheduled_email_id": email_job.id,
+            "status": email_job.status,
+            "error": email_job.error_message
+        })
+
+    return {
+        "processed_jobs": processed_count,
+        "sent_emails_count": sent_count,
+        "failed_emails_count": failed_count,
+        "details": details
     }
 
 

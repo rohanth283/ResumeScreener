@@ -33,5 +33,11 @@
       "src": "/(.*)",
       "dest": "/frontend/index.html"
     }
+  ],
+  "crons": [
+    {
+      "path": "/_/backend/jobs/cron/send-scheduled-emails",
+      "schedule": "*/10 * * * *"
+    }
   ]
 }

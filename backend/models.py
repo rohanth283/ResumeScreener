@@ -54,3 +54,19 @@ class Applicant(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
     job = relationship("Job", back_populates="applicants")
+
+
+class ScheduledEmail(Base):
+    __tablename__ = "scheduled_emails"
+
+    id = Column(Integer, primary_key=True, index=True)
+    job_id = Column(Integer, ForeignKey("jobs.id", ondelete="CASCADE"), nullable=False)
+    applicant_ids = Column(JSON, nullable=False)  # Stored as list of integer applicant IDs
+    subject_template = Column(String, nullable=False)
+    body_template = Column(String, nullable=False)
+    send_at = Column(DateTime, nullable=False)  # In UTC time
+    status = Column(String, default="pending", nullable=False)  # pending, sent, failed
+    error_message = Column(String, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    job = relationship("Job")

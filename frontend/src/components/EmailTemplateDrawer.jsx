@@ -19,6 +19,19 @@ export default function EmailTemplateDrawer({
     'Best regards,\n' +
     'Recruiting Team'
   );
+
+  const getMinDateTime = () => {
+    const now = new Date(Date.now() + 2 * 60 * 1000); // 2 mins in future to avoid instant race
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+  };
+
+  const [deliveryType, setDeliveryType] = useState('immediate');
+  const [scheduleTime, setScheduleTime] = useState(getMinDateTime());
   
   const [sending, setSending] = useState(false);
   const [sendSummary, setSendSummary] = useState(null); // { sent_count, failed_count, results }
@@ -30,6 +43,8 @@ export default function EmailTemplateDrawer({
       setSendSummary(null);
       setSendingError(null);
       setSending(false);
+      setDeliveryType('immediate');
+      setScheduleTime(getMinDateTime());
     } else {
       const timer = setTimeout(() => setShouldRender(false), 350);
       return () => clearTimeout(timer);
@@ -72,7 +87,8 @@ export default function EmailTemplateDrawer({
     const payload = {
       applicant_ids: selectedApplicants.map(app => app.id),
       subject_template: subjectTemplate,
-      body_template: bodyTemplate
+      body_template: bodyTemplate,
+      send_at: deliveryType === 'scheduled' ? new Date(scheduleTime).toISOString() : null
     };
 
     try {
@@ -140,39 +156,50 @@ export default function EmailTemplateDrawer({
 
           {isFinished ? (
             <div className="send-summary-results">
-              <div className="summary-status-card">
-                <span className="summary-icon">✉️</span>
-                <h4>Dispatch Summary</h4>
-                <div className="summary-metrics">
-                  <span className="metric success">✅ {sendSummary.sent_count} Sent</span>
-                  {sendSummary.failed_count > 0 && (
-                    <span className="metric error">❌ {sendSummary.failed_count} Failed</span>
-                  )}
+              {sendSummary.status === 'scheduled' ? (
+                <div className="summary-status-card">
+                  <span className="summary-icon">⏰</span>
+                  <h4>Outreach Scheduled</h4>
+                  <p className="summary-msg">{sendSummary.message}</p>
+                  <p className="scheduled-tip">Emails will be queued and sent automatically at the designated time.</p>
                 </div>
-              </div>
+              ) : (
+                <>
+                  <div className="summary-status-card">
+                    <span className="summary-icon">✉️</span>
+                    <h4>Dispatch Summary</h4>
+                    <div className="summary-metrics">
+                      <span className="metric success">✅ {sendSummary.sent_count} Sent</span>
+                      {sendSummary.failed_count > 0 && (
+                        <span className="metric error">❌ {sendSummary.failed_count} Failed</span>
+                      )}
+                    </div>
+                  </div>
 
-              <div className="recipient-list status-checking">
-                <h5>Dispatch Status</h5>
-                <div className="recipient-rows">
-                  {selectedApplicants.map(app => {
-                    const status = getCandidateSendStatus(app.id);
-                    const errorMsg = getCandidateSendError(app.id);
-                    return (
-                      <div key={app.id} className="recipient-row-item">
-                        <div className="recipient-info">
-                          <span className="name">{app.name || 'Unknown Candidate'}</span>
-                          <span className="email">{app.email}</span>
-                        </div>
-                        <span className={`status-badge-mini ${status}`} title={errorMsg}>
-                          {status === 'success' && '✅ Sent'}
-                          {status === 'failed' && '❌ Failed'}
-                          {status === 'pending' && '⏳ Pending'}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
+                  <div className="recipient-list status-checking">
+                    <h5>Dispatch Status</h5>
+                    <div className="recipient-rows">
+                      {selectedApplicants.map(app => {
+                        const status = getCandidateSendStatus(app.id);
+                        const errorMsg = getCandidateSendError(app.id);
+                        return (
+                          <div key={app.id} className="recipient-row-item">
+                            <div className="recipient-info">
+                              <span className="name">{app.name || 'Unknown Candidate'}</span>
+                              <span className="email">{app.email}</span>
+                            </div>
+                            <span className={`status-badge-mini ${status}`} title={errorMsg}>
+                              {status === 'success' && '✅ Sent'}
+                              {status === 'failed' && '❌ Failed'}
+                              {status === 'pending' && '⏳ Pending'}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </>
+              )}
 
               <div className="drawer-actions-row">
                 <button 
@@ -226,6 +253,60 @@ export default function EmailTemplateDrawer({
                   required
                   disabled={sending}
                 />
+              </div>
+
+              {/* Delivery Settings */}
+              <div className="delivery-settings">
+                <h5>Delivery Options</h5>
+                <div className="delivery-radio-group">
+                  <label className={`delivery-radio-option ${deliveryType === 'immediate' ? 'active' : ''}`}>
+                    <input
+                      type="radio"
+                      name="deliveryType"
+                      value="immediate"
+                      checked={deliveryType === 'immediate'}
+                      onChange={() => setDeliveryType('immediate')}
+                      disabled={sending}
+                    />
+                    <div className="option-details">
+                      <span className="option-title">⚡ Send Immediately</span>
+                      <span className="option-desc">Emails will be dispatched in a sequential queue right now.</span>
+                    </div>
+                  </label>
+                  
+                  <label className={`delivery-radio-option ${deliveryType === 'scheduled' ? 'active' : ''}`}>
+                    <input
+                      type="radio"
+                      name="deliveryType"
+                      value="scheduled"
+                      checked={deliveryType === 'scheduled'}
+                      onChange={() => setDeliveryType('scheduled')}
+                      disabled={sending}
+                    />
+                    <div className="option-details">
+                      <span className="option-title">⏰ Schedule for Later</span>
+                      <span className="option-desc">Set a custom date and time to send these emails.</span>
+                    </div>
+                  </label>
+                </div>
+
+                {deliveryType === 'scheduled' && (
+                  <div className="schedule-time-picker email-input-group animate-slide-down">
+                    <label htmlFor="schedule-time-input">Send At Time (Local Time)</label>
+                    <input
+                      id="schedule-time-input"
+                      type="datetime-local"
+                      value={scheduleTime}
+                      onChange={(e) => setScheduleTime(e.target.value)}
+                      min={getMinDateTime()}
+                      required
+                      disabled={sending}
+                    />
+                    <span className="timezone-notice">
+                      Will be converted to UTC: <strong>{new Date(scheduleTime || Date.now()).toUTCString()}</strong>
+                    </span>
+                  </div>
+                )}
               </div>
 
               {/* Placeholders helper guide */}

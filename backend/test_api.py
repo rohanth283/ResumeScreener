@@ -513,6 +513,83 @@ def test_bulk_candidate_email_outreach_and_isolation():
     assert data["results"][1]["status"] == "success"
 
 
+def test_email_scheduling_and_cron():
+    # 1. Signup recruiter and create job
+    signup_payload = {"email": "sched_recruiter@example.com", "password": "password123", "name": "Sched Recruiter"}
+    res = client.post("/auth/signup", json=signup_payload)
+    assert res.status_code == 200
+    token = res.json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    job_payload = {"title": "Go Developer", "description": "Needs Go experience"}
+    res = client.post("/jobs", json=job_payload, headers=headers)
+    job_id = res.json()["id"]
+
+    # 2. Screen candidate
+    resume = ("resume.txt", b"Go engineer details\nEmail: go@example.com", "text/plain")
+    res = client.post(f"/jobs/{job_id}/screen", files={"resume_file": resume}, headers=headers)
+    assert res.status_code == 200
+    applicant_id = res.json()["id"]
+
+    # 3. Schedule bulk email in the future
+    import datetime
+    future_time = (datetime.datetime.utcnow() + datetime.timedelta(minutes=5)).isoformat() + "Z"
+    
+    email_payload = {
+        "applicant_ids": [applicant_id],
+        "subject_template": "Scheduled Update for {job_title}",
+        "body_template": "Hello {name}, your application is under consideration.",
+        "send_at": future_time
+    }
+
+    res_schedule = client.post(f"/jobs/{job_id}/applicants/send-email", json=email_payload, headers=headers)
+    assert res_schedule.status_code == 200
+    data = res_schedule.json()
+    assert data["status"] == "scheduled"
+    assert "Successfully scheduled" in data["message"]
+
+    # 4. Trigger cron endpoint immediately (should process 0 jobs since the time has not arrived)
+    res_cron1 = client.post("/jobs/cron/send-scheduled-emails")
+    assert res_cron1.status_code == 200
+    data_cron1 = res_cron1.json()
+    assert data_cron1["processed_jobs"] == 0
+    assert data_cron1["sent_emails_count"] == 0
+
+    # 5. Trigger cron but mock the current time to be in the future (or edit the DB row to be in the past)
+    # We can fetch the scheduled_email from DB in test session and edit send_at to be in the past
+    db = TestingSessionLocal()
+    try:
+        scheduled_job = db.query(models.ScheduledEmail).filter(
+            models.ScheduledEmail.job_id == job_id
+        ).first()
+        assert scheduled_job is not None
+        assert scheduled_job.status == "pending"
+        
+        # Backdate the send_at time
+        scheduled_job.send_at = datetime.datetime.utcnow() - datetime.timedelta(minutes=10)
+        db.commit()
+    finally:
+        db.close()
+
+    # 6. Re-trigger cron (should process 1 job successfully)
+    res_cron2 = client.post("/jobs/cron/send-scheduled-emails")
+    assert res_cron2.status_code == 200
+    data_cron2 = res_cron2.json()
+    assert data_cron2["processed_jobs"] == 1
+    assert data_cron2["sent_emails_count"] == 1
+    assert data_cron2["details"][0]["status"] == "sent"
+
+    # Verify database status is updated
+    db = TestingSessionLocal()
+    try:
+        scheduled_job = db.query(models.ScheduledEmail).filter(
+            models.ScheduledEmail.job_id == job_id
+        ).first()
+        assert scheduled_job.status == "sent"
+    finally:
+        db.close()
+
+
 
 
 

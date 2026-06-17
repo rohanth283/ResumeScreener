@@ -93,5 +93,6 @@ class BulkEmailRequest(BaseModel):
     applicant_ids: List[int]
     subject_template: str
     body_template: str
+    send_at: Optional[str] = None
 
 
