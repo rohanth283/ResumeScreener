@@ -14,7 +14,7 @@ export default function EmailTemplateDrawer({
   const [subjectTemplate, setSubjectTemplate] = useState('Application Update: {job_title}');
   const [bodyTemplate, setBodyTemplate] = useState(
     'Hello {name},\n\n' +
-    'Thank you for applying to the {job_title} position. Our AI screening system has evaluated your profile and matched your qualifications with a score of {score}.\n\n' +
+    'Thank you for applying to the {job_title} position. Your application has been received and is under consideration.\n\n' +
     'We will be in touch with you shortly regarding the next steps in our hiring process.\n\n' +
     'Best regards,\n' +
     'Recruiting Team'
