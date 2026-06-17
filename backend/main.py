@@ -213,9 +213,17 @@ def google_auth(auth_data: schemas.GoogleAuthRequest, db: Session = Depends(get_
 
 @app.post("/auth/forgot-password")
 def forgot_password(request_data: schemas.ForgotPasswordRequest, db: Session = Depends(get_db)):
-    user = db.query(models.User).filter(models.User.email == request_data.email).first()
-    # To prevent email harvesting, always return success even if user doesn't exist
-    if user and user.auth_provider == "local":
+    email_cleaned = request_data.email.strip().lower()
+    user = db.query(models.User).filter(models.User.email == email_cleaned).first()
+    
+    # To prevent email harvesting, always return success even if user doesn't exist.
+    # Print the resolution reason in backend logs for easy developer debugging.
+    if not user:
+        print(f"FORGOT PASSWORD: No user found with email '{email_cleaned}' in database.")
+    elif user.auth_provider != "local":
+        print(f"FORGOT PASSWORD: User '{email_cleaned}' exists but is registered via Google SSO (auth_provider='{user.auth_provider}'). Reset skipped.")
+    else:
+        print(f"FORGOT PASSWORD: Initiating reset email to local user '{email_cleaned}'.")
         reset_token = auth.create_password_reset_token(user.email, user.hashed_password)
         auth.send_reset_email(user.email, reset_token)
     
