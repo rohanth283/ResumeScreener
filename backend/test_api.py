@@ -462,6 +462,58 @@ def test_applicant_review_toggle_and_isolation():
     assert res.json()["is_reviewed"] is False
 
 
+def test_bulk_candidate_email_outreach_and_isolation():
+    # 1. Signup Recruiter A and create job
+    signup_a = {"email": "recruiter_a_email_test@example.com", "password": "password123", "name": "Recruiter A"}
+    res = client.post("/auth/signup", json=signup_a)
+    assert res.status_code == 200
+    token_a = res.json()["access_token"]
+    headers_a = {"Authorization": f"Bearer {token_a}"}
+
+    job_payload = {"title": "Python Developer", "description": "Needs Python and FastAPI"}
+    res = client.post("/jobs", json=job_payload, headers=headers_a)
+    assert res.status_code == 200
+    job_id = res.json()["id"]
+
+    # 2. Screen 2 candidates under Recruiter A's job
+    resume1 = ("resume1.txt", b"Jane Doe\nEmail: jane@example.com\nPython skills", "text/plain")
+    res1 = client.post(f"/jobs/{job_id}/screen", files={"resume_file": resume1}, headers=headers_a)
+    assert res1.status_code == 200
+    applicant1_id = res1.json()["id"]
+
+    resume2 = ("resume2.txt", b"Bob Smith\nEmail: bob@example.com\nPython and FastAPI skills", "text/plain")
+    res2 = client.post(f"/jobs/{job_id}/screen", files={"resume_file": resume2}, headers=headers_a)
+    assert res2.status_code == 200
+    applicant2_id = res2.json()["id"]
+
+    # 3. Signup Recruiter B
+    signup_b = {"email": "recruiter_b_email_test@example.com", "password": "password123", "name": "Recruiter B"}
+    res = client.post("/auth/signup", json=signup_b)
+    assert res.status_code == 200
+    token_b = res.json()["access_token"]
+    headers_b = {"Authorization": f"Bearer {token_b}"}
+
+    # 4. Verify Recruiter B cannot bulk email Recruiter A's applicants (403 Forbidden)
+    email_payload = {
+        "applicant_ids": [applicant1_id, applicant2_id],
+        "subject_template": "Update regarding {job_title}",
+        "body_template": "Hello {name}, your score is {score}."
+    }
+    res_unauth = client.post(f"/jobs/{job_id}/applicants/send-email", json=email_payload, headers=headers_b)
+    assert res_unauth.status_code == 403
+
+    # 5. Verify Recruiter A can bulk email successfully
+    res_auth = client.post(f"/jobs/{job_id}/applicants/send-email", json=email_payload, headers=headers_a)
+    assert res_auth.status_code == 200
+    data = res_auth.json()
+    assert data["sent_count"] == 2
+    assert data["failed_count"] == 0
+    assert len(data["results"]) == 2
+    assert data["results"][0]["status"] == "success"
+    assert data["results"][1]["status"] == "success"
+
+
+
 
 
 

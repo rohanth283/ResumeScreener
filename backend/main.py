@@ -595,6 +595,78 @@ def toggle_applicant_review(
     return applicant
 
 
+@app.post("/jobs/{job_id}/applicants/send-email")
+def send_bulk_emails(
+    job_id: int,
+    req: schemas.BulkEmailRequest,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    # 1. Verify Job ownership
+    job = db.query(models.Job).filter(models.Job.id == job_id).first()
+    if not job:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Job position not found."
+        )
+    if job.user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to access this job."
+        )
+
+    # 2. Retrieve applicants matching job_id and requested ids
+    applicants = db.query(models.Applicant).filter(
+        models.Applicant.job_id == job_id,
+        models.Applicant.id.in_(req.applicant_ids)
+    ).all()
+
+    # Map database results by id for quick lookup
+    applicant_map = {a.id: a for a in applicants}
+
+    results = []
+    sent_count = 0
+    failed_count = 0
+
+    for app_id in req.applicant_ids:
+        app = applicant_map.get(app_id)
+        if not app:
+            results.append({"applicant_id": app_id, "status": "failed", "error": "Candidate not found under this job."})
+            failed_count += 1
+            continue
+
+        try:
+            # Render templates
+            name = app.name or "Candidate"
+            job_title = job.title or "Position"
+            score_str = f"{app.match_score}%" if app.match_score is not None else "N/A"
+            email_address = app.email
+
+            rendered_subject = req.subject_template.replace("{name}", name)\
+                                                    .replace("{job_title}", job_title)\
+                                                    .replace("{score}", score_str)\
+                                                    .replace("{email}", email_address)
+
+            rendered_body = req.body_template.replace("{name}", name)\
+                                              .replace("{job_title}", job_title)\
+                                              .replace("{score}", score_str)\
+                                              .replace("{email}", email_address)
+
+            # Send email
+            auth.send_email(to_email=email_address, subject=rendered_subject, body_text=rendered_body)
+            results.append({"applicant_id": app_id, "email": email_address, "status": "success"})
+            sent_count += 1
+        except Exception as e:
+            results.append({"applicant_id": app_id, "email": app.email, "status": "failed", "error": str(e)})
+            failed_count += 1
+
+    return {
+        "sent_count": sent_count,
+        "failed_count": failed_count,
+        "results": results
+    }
+
+
 if __name__ == "__main__":
     import uvicorn
 

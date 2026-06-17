@@ -385,9 +385,40 @@
   animation: spin 0.8s linear infinite;
 }
 
-@keyframes spin {
-  to { transform: rotate(360deg); }
+/* Bulk email row selection and action header styling */
+.applicants-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
 }
+
+.applicants-section-header h4 {
+  margin: 0;
+}
+
+.applicant-row.selected {
+  background: rgba(99, 102, 241, 0.08);
+  border-left: 3px solid #6366f1;
+}
+
+.applicant-row.selected:hover {
+  background: rgba(99, 102, 241, 0.12);
+}
+
+.email-selected-btn {
+  animation: pulse-button 2s infinite ease-in-out;
+}
+
+@keyframes pulse-button {
+  0%, 100% {
+    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25);
+  }
+  50% {
+    box-shadow: 0 4px 20px rgba(79, 70, 229, 0.5);
+  }
+}
+
 
 
 

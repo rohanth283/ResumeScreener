@@ -4,6 +4,7 @@ import JobList from './components/JobList';
 import NewJobModal from './components/NewJobModal';
 import UploadApplicantModal from './components/UploadApplicantModal';
 import AnalysisDrawer from './components/AnalysisDrawer';
+import EmailTemplateDrawer from './components/EmailTemplateDrawer';
 import './App.css';
 
 const API_URL = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? '/_/backend' : 'http://localhost:8000');
@@ -19,11 +20,13 @@ function App() {
   const [activeJob, setActiveJob] = useState(null);
   const [applicants, setApplicants] = useState([]);
   const [activeApplicant, setActiveApplicant] = useState(null);
+  const [selectedApplicantIds, setSelectedApplicantIds] = useState([]);
 
   // Modals & Drawer State
   const [isNewJobModalOpen, setIsNewJobModalOpen] = useState(false);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [isEmailDrawerOpen, setIsEmailDrawerOpen] = useState(false);
 
   const [editingJob, setEditingJob] = useState(null);
   const [rescreenApplicant, setRescreenApplicant] = useState(null);
@@ -107,6 +110,8 @@ function App() {
     setActiveApplicant(null);
     setEditingJob(null);
     setRescreenApplicant(null);
+    setSelectedApplicantIds([]);
+    setIsEmailDrawerOpen(false);
     localStorage.removeItem('auth_token');
     localStorage.removeItem('auth_user');
   };
@@ -120,7 +125,22 @@ function App() {
   const handleSelectJob = (job) => {
     setActiveJob(job);
     setApplicants([]);
+    setSelectedApplicantIds([]);
     fetchApplicants(job.id);
+  };
+
+  const handleToggleSelectApplicant = (id) => {
+    setSelectedApplicantIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
+  };
+
+  const handleToggleSelectAllApplicants = () => {
+    if (selectedApplicantIds.length === applicants.length) {
+      setSelectedApplicantIds([]);
+    } else {
+      setSelectedApplicantIds(applicants.map((app) => app.id));
+    }
   };
 
   const handleCreateJob = async (jobData) => {
@@ -624,7 +644,19 @@ function App() {
           </div>
 
           <div className="applicants-section">
-            <h4>Screened Candidates</h4>
+            <div className="applicants-section-header">
+              <h4>Screened Candidates</h4>
+              {selectedApplicantIds.length > 0 && (
+                <button
+                  type="button"
+                  className="btn-primary email-selected-btn"
+                  onClick={() => setIsEmailDrawerOpen(true)}
+                  style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+                >
+                  📧 Email Selected ({selectedApplicantIds.length})
+                </button>
+              )}
+            </div>
             {error && (
               <div className="error-banner" style={{ marginBottom: '16px' }}>
                 <strong>Error:</strong> {error}
@@ -652,6 +684,13 @@ function App() {
                 <table className="applicants-table">
                   <thead>
                     <tr>
+                      <th style={{ width: '40px', textAlign: 'center' }}>
+                        <input
+                          type="checkbox"
+                          checked={applicants.length > 0 && selectedApplicantIds.length === applicants.length}
+                          onChange={handleToggleSelectAllApplicants}
+                        />
+                      </th>
                       <th>Candidate</th>
                       <th>Score</th>
                       <th>Filename</th>
@@ -664,9 +703,16 @@ function App() {
                       return (
                         <tr
                           key={app.id}
-                          className="applicant-row"
+                          className={`applicant-row ${selectedApplicantIds.includes(app.id) ? 'selected' : ''}`}
                           onClick={() => handleSelectApplicant(app)}
                         >
+                          <td onClick={(e) => e.stopPropagation()} style={{ textAlign: 'center' }}>
+                            <input
+                              type="checkbox"
+                              checked={selectedApplicantIds.includes(app.id)}
+                              onChange={() => handleToggleSelectApplicant(app.id)}
+                            />
+                          </td>
                           <td>
                             <div className="candidate-name-cell">
                               {app.name || 'Unknown Candidate'}
@@ -729,6 +775,19 @@ function App() {
         applicant={activeApplicant}
         onRescreen={handleRescreenTrigger}
         onToggleReview={handleToggleReview}
+      />
+
+      <EmailTemplateDrawer
+        isOpen={isEmailDrawerOpen}
+        onClose={() => setIsEmailDrawerOpen(false)}
+        selectedApplicants={applicants.filter((app) => selectedApplicantIds.includes(app.id))}
+        job={activeJob}
+        token={token}
+        apiUrl={API_URL}
+        onSentComplete={() => {
+          setIsEmailDrawerOpen(false);
+          setSelectedApplicantIds([]);
+        }}
       />
     </div>
   );

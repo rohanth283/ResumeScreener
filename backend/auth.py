@@ -69,14 +69,51 @@ def create_password_reset_token(email: str, password_hash: str) -> str:
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
 
-def send_reset_email(email: str, token: str):
+def send_email(to_email: str, subject: str, body_text: str, body_html: Optional[str] = None):
     smtp_host = os.getenv("SMTP_HOST", "").strip()
     smtp_port = int(os.getenv("SMTP_PORT", "587"))
     smtp_username = os.getenv("SMTP_USERNAME", "").strip()
     smtp_password = os.getenv("SMTP_PASSWORD", "").strip()
     smtp_from = os.getenv("SMTP_FROM", "no-reply@localhost").strip()
-    frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000").strip()
 
+    # Always log locally for development/test inspection when not running on Vercel
+    if os.getenv("VERCEL") != "1":
+        _log_email_locally(to_email, subject, body_text)
+
+    if smtp_host:
+        import smtplib
+        from email.mime.multipart import MIMEMultipart
+        from email.mime.text import MIMEText
+
+        msg = MIMEMultipart("alternative")
+        msg["Subject"] = subject
+        msg["From"] = smtp_from
+        msg["To"] = to_email
+
+        msg.attach(MIMEText(body_text, "plain"))
+        if body_html:
+            msg.attach(MIMEText(body_html, "html"))
+
+        try:
+            server = smtplib.SMTP(smtp_host, smtp_port)
+            if smtp_username and smtp_password:
+                server.starttls()
+                server.login(smtp_username, smtp_password)
+            server.sendmail(smtp_from, [to_email], msg.as_string())
+            server.quit()
+            print(f"Email sent successfully to {to_email} via SMTP.")
+        except Exception as e:
+            print(f"Failed to send email to {to_email} via SMTP: {e}")
+            if os.getenv("VERCEL") == "1":
+                # Ephemeral fallback log on Vercel
+                _log_email_locally(to_email, subject, body_text)
+    else:
+        if os.getenv("VERCEL") == "1":
+            _log_email_locally(to_email, subject, body_text)
+
+
+def send_reset_email(email: str, token: str):
+    frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000").strip()
     reset_link = f"{frontend_url}/?view=reset-password&token={token}"
     subject = "Reset Your Password - Smart Resume Screener"
     body_text = f"Hello,\n\nPlease reset your password by clicking the link below:\n{reset_link}\n\nThis link will expire in 15 minutes."
@@ -88,52 +125,25 @@ def send_reset_email(email: str, token: str):
   <p>This link will expire in 15 minutes.</p>
 </body>
 </html>"""
-
-    if smtp_host:
-        import smtplib
-        from email.mime.multipart import MIMEMultipart
-        from email.mime.text import MIMEText
-
-        msg = MIMEMultipart("alternative")
-        msg["Subject"] = subject
-        msg["From"] = smtp_from
-        msg["To"] = email
-
-        msg.attach(MIMEText(body_text, "plain"))
-        msg.attach(MIMEText(body_html, "html"))
-
-        try:
-            server = smtplib.SMTP(smtp_host, smtp_port)
-            if smtp_username and smtp_password:
-                server.starttls()
-                server.login(smtp_username, smtp_password)
-            server.sendmail(smtp_from, [email], msg.as_string())
-            server.quit()
-            print(f"Password reset email sent successfully to {email} via SMTP.")
-        except Exception as e:
-            print(f"Failed to send email to {email} via SMTP: {e}")
-            _log_email_locally(email, reset_link, body_text)
-    else:
-        _log_email_locally(email, reset_link, body_text)
+    send_email(email, subject, body_text, body_html)
 
 
-def _log_email_locally(email: str, reset_link: str, body_text: str):
+def _log_email_locally(email: str, subject: str, body_text: str):
     import datetime
     log_content = f"""==================================================
 Date: {datetime.datetime.utcnow().isoformat()}
 To: {email}
-Subject: Reset Your Password - Smart Resume Screener
-Reset Link: {reset_link}
+Subject: {subject}
 --------------------------------------------------
 {body_text}
 ==================================================\n\n"""
     
-    print(f"\n[EMAIL FALLBACK] Password reset email logged for {email}:\n{log_content}")
+    print(f"\n[EMAIL FALLBACK] Email logged for {email}:\n{log_content}")
     
     log_file_path = Path(__file__).resolve().parent / "sent_emails.log"
     try:
         with open(log_file_path, "a", encoding="utf-8") as f:
             f.write(log_content)
     except Exception as e:
-        print(f"Failed to write reset email log: {e}")
+        print(f"Failed to write email log: {e}")
 

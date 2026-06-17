@@ -88,3 +88,10 @@ class ResetPasswordRequest(BaseModel):
     token: str
     new_password: str
 
+
+class BulkEmailRequest(BaseModel):
+    applicant_ids: List[int]
+    subject_template: str
+    body_template: str
+
+
