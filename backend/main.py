@@ -229,8 +229,11 @@ def forgot_password(request_data: schemas.ForgotPasswordRequest, db: Session = D
         print(f"FORGOT PASSWORD: Initiating reset email to local user '{email_cleaned}'.")
         try:
             reset_token = auth.create_password_reset_token(user.email, user.hashed_password)
-            auth.send_reset_email(user.email, reset_token)
-            debug_status = "email_sent_success"
+            delivery_mode = auth.send_reset_email(user.email, reset_token)
+            if delivery_mode:
+                debug_status = f"email_sent_success_{delivery_mode}"
+            else:
+                debug_status = "email_sent_success"
         except Exception as e:
             debug_status = f"email_send_failed: {str(e)}"
             print(f"FORGOT PASSWORD ERROR: Failed to send email to local user: {e}")

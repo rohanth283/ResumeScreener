@@ -69,7 +69,7 @@ def create_password_reset_token(email: str, password_hash: str) -> str:
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
 
-def send_email(to_email: str, subject: str, body_text: str, body_html: Optional[str] = None):
+def send_email(to_email: str, subject: str, body_text: str, body_html: Optional[str] = None) -> str:
     smtp_host = os.getenv("SMTP_HOST", "").strip()
     smtp_port = int(os.getenv("SMTP_PORT", "587"))
     smtp_username = os.getenv("SMTP_USERNAME", "").strip()
@@ -102,17 +102,21 @@ def send_email(to_email: str, subject: str, body_text: str, body_html: Optional[
             server.sendmail(smtp_from, [to_email], msg.as_string())
             server.quit()
             print(f"Email sent successfully to {to_email} via SMTP.")
+            return "smtp_sent"
         except Exception as e:
             print(f"Failed to send email to {to_email} via SMTP: {e}")
             if os.getenv("VERCEL") == "1":
                 # Ephemeral fallback log on Vercel
                 _log_email_locally(to_email, subject, body_text)
+            raise e
     else:
         if os.getenv("VERCEL") == "1":
             _log_email_locally(to_email, subject, body_text)
+            return "fallback_logged_to_console"
+        return "fallback_logged_locally"
 
 
-def send_reset_email(email: str, token: str):
+def send_reset_email(email: str, token: str) -> str:
     frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000").strip()
     reset_link = f"{frontend_url}/?view=reset-password&token={token}"
     subject = "Reset Your Password - Smart Resume Screener"
@@ -125,7 +129,7 @@ def send_reset_email(email: str, token: str):
   <p>This link will expire in 15 minutes.</p>
 </body>
 </html>"""
-    send_email(email, subject, body_text, body_html)
+    return send_email(email, subject, body_text, body_html)
 
 
 def _log_email_locally(email: str, subject: str, body_text: str):
