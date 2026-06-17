@@ -37,7 +37,7 @@
   "crons": [
     {
       "path": "/_/backend/jobs/cron/send-scheduled-emails",
-      "schedule": "*/10 * * * *"
+      "schedule": "0 0 * * *"
     }
   ]
 }
