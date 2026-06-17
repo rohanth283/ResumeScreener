@@ -9,6 +9,20 @@ import './App.css';
 
 const API_URL = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? '/_/backend' : 'http://localhost:8000');
 
+const ensureUtcDate = (dateVal) => {
+  if (!dateVal) return null;
+  if (dateVal instanceof Date) return dateVal;
+  const dateStr = String(dateVal);
+  if (dateStr.includes('T') && !dateStr.endsWith('Z')) {
+    const parts = dateStr.split('T');
+    const timePart = parts[1];
+    if (!timePart.includes('+') && !timePart.includes('-')) {
+      return new Date(dateStr + 'Z');
+    }
+  }
+  return new Date(dateStr);
+};
+
 function App() {
   const [token, setToken] = useState(() => localStorage.getItem('auth_token'));
   const [user, setUser] = useState(() => {
@@ -809,7 +823,7 @@ function App() {
                               </span>
                             </td>
                             <td>{app.resume_filename}</td>
-                            <td>{new Date(app.created_at).toLocaleDateString()}</td>
+                            <td>{ensureUtcDate(app.created_at).toLocaleDateString()}</td>
                           </tr>
                         );
                       })}
@@ -846,8 +860,8 @@ function App() {
                   {emailsHistory.map((job) => {
                     const isExpanded = expandedEmailJobIds.includes(job.id);
                     const formattedDate = job.send_at
-                      ? new Date(job.send_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) + ' IST'
-                      : new Date(job.created_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) + ' IST';
+                      ? ensureUtcDate(job.send_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) + ' IST'
+                      : ensureUtcDate(job.created_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) + ' IST';
                     const statusClass = job.status === 'sent' ? 'success' : job.status === 'pending' ? 'pending' : 'failed';
                     const statusLabel = job.status === 'pending' ? 'Scheduled' : job.status === 'sent' ? 'Sent' : job.status === 'partial_failed' ? 'Partial Success' : 'Failed';
                     
