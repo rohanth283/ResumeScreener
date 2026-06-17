@@ -120,13 +120,102 @@ def send_reset_email(email: str, token: str) -> str:
     frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000").strip()
     reset_link = f"{frontend_url}/?view=reset-password&token={token}"
     subject = "Reset Your Password - Smart Resume Screener"
-    body_text = f"Hello,\n\nPlease reset your password by clicking the link below:\n{reset_link}\n\nThis link will expire in 15 minutes."
-    body_html = f"""<html>
+    
+    body_text = (
+        f"Hello,\n\n"
+        f"We received a request to reset the password for your account on Smart Resume Screener.\n\n"
+        f"Please reset your password by clicking the link below:\n"
+        f"{reset_link}\n\n"
+        f"This link will expire in 15 minutes. If you did not request this, you can safely ignore this email.\n\n"
+        f"Best regards,\n"
+        f"The Smart Resume Screener Team"
+    )
+    
+    body_html = f"""<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Reset Your Password</title>
+  <style>
+    body {{
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: #f8fafc;
+      margin: 0;
+      padding: 0;
+      -webkit-font-smoothing: antialiased;
+    }}
+    .wrapper {{
+      width: 100%;
+      background-color: #f8fafc;
+      padding: 40px 0;
+    }}
+    .container {{
+      max-width: 540px;
+      margin: 0 auto;
+      background-color: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 40px;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    }}
+    h2 {{
+      color: #1e293b;
+      font-size: 22px;
+      font-weight: 700;
+      margin-top: 0;
+      margin-bottom: 20px;
+    }}
+    p {{
+      color: #475569;
+      font-size: 15px;
+      line-height: 1.6;
+      margin-top: 0;
+      margin-bottom: 24px;
+    }}
+    .btn-container {{
+      text-align: center;
+      margin-bottom: 30px;
+      margin-top: 30px;
+    }}
+    .btn-primary {{
+      display: inline-block;
+      background-color: #4f46e5;
+      color: #ffffff !important;
+      text-decoration: none;
+      padding: 12px 28px;
+      font-size: 15px;
+      font-weight: 600;
+      border-radius: 8px;
+      box-shadow: 0 4px 6px -1px rgba(79, 70, 229, 0.2);
+    }}
+    .footer {{
+      border-top: 1px solid #e2e8f0;
+      padding-top: 20px;
+      color: #94a3b8;
+      font-size: 13px;
+      line-height: 1.5;
+    }}
+  </style>
+</head>
 <body>
-  <p>Hello,</p>
-  <p>Please reset your password by clicking the link below:</p>
-  <p><a href="{reset_link}">{reset_link}</a></p>
-  <p>This link will expire in 15 minutes.</p>
+  <div class="wrapper">
+    <div class="container">
+      <h2>Reset Your Password</h2>
+      <p>Hello,</p>
+      <p>We received a request to reset the password for your account. Click the button below to choose a new password:</p>
+      <div class="btn-container">
+        <a href="{reset_link}" class="btn-primary">Reset Password</a>
+      </div>
+      <p>If the button above does not work, copy and paste the link below into your web browser:</p>
+      <p style="word-break: break-all; font-size: 13px; color: #6366f1; background-color: #f1f5f9; padding: 12px; border-radius: 6px; margin-bottom: 24px;">
+        <a href="{reset_link}" style="color: #6366f1; text-decoration: none;">{reset_link}</a>
+      </p>
+      <p>This password reset link is valid for <strong>15 minutes</strong>. If you did not request this password reset, please ignore this email.</p>
+      <div class="footer">
+        <p>Best regards,<br><strong>Smart Resume Screener Team</strong></p>
+      </div>
+    </div>
+  </div>
 </body>
 </html>"""
     return send_email(email, subject, body_text, body_html)
