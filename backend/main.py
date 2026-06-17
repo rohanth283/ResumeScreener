@@ -218,16 +218,27 @@ def forgot_password(request_data: schemas.ForgotPasswordRequest, db: Session = D
     
     # To prevent email harvesting, always return success even if user doesn't exist.
     # Print the resolution reason in backend logs for easy developer debugging.
+    debug_status = "unknown"
     if not user:
+        debug_status = "user_not_found"
         print(f"FORGOT PASSWORD: No user found with email '{email_cleaned}' in database.")
     elif user.auth_provider != "local":
+        debug_status = f"google_sso_provider_{user.auth_provider}"
         print(f"FORGOT PASSWORD: User '{email_cleaned}' exists but is registered via Google SSO (auth_provider='{user.auth_provider}'). Reset skipped.")
     else:
         print(f"FORGOT PASSWORD: Initiating reset email to local user '{email_cleaned}'.")
-        reset_token = auth.create_password_reset_token(user.email, user.hashed_password)
-        auth.send_reset_email(user.email, reset_token)
+        try:
+            reset_token = auth.create_password_reset_token(user.email, user.hashed_password)
+            auth.send_reset_email(user.email, reset_token)
+            debug_status = "email_sent_success"
+        except Exception as e:
+            debug_status = f"email_send_failed: {str(e)}"
+            print(f"FORGOT PASSWORD ERROR: Failed to send email to local user: {e}")
     
-    return {"message": "If the email is registered, a password reset link has been sent."}
+    return {
+        "message": "If the email is registered, a password reset link has been sent.",
+        "debug_status": debug_status
+    }
 
 
 @app.post("/auth/reset-password")

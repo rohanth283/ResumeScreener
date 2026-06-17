@@ -209,7 +209,8 @@ def test_password_reset_flow():
     # 2. Request forgot-password link
     response = client.post("/auth/forgot-password", json={"email": "reset_test@example.com"})
     assert response.status_code == 200
-    assert response.json() == {"message": "If the email is registered, a password reset link has been sent."}
+    assert response.json()["message"] == "If the email is registered, a password reset link has been sent."
+    assert response.json()["debug_status"] == "email_sent_success"
 
     # 3. Verify entry in sent_emails.log
     assert os.path.exists(log_file_path)
