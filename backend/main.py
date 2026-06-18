@@ -21,66 +21,66 @@ import auth
 from database import engine, get_db
 from sqlalchemy import text
 
-# Automatically initialize SQLite database tables
-models.Base.metadata.create_all(bind=engine)
-
+# Consolidate database initialization and migrations into a single transaction/connection block
 def run_migrations():
-    # 1. Ensure user_id exists in jobs
+    from sqlalchemy import inspect
     try:
         with engine.begin() as conn:
-            conn.execute(text("ALTER TABLE jobs ADD COLUMN user_id INTEGER REFERENCES users(id) ON DELETE CASCADE"))
-        print("MIGRATION: Added user_id column to jobs table.")
-    except Exception as e:
-        print(f"MIGRATION INFO: Skip user_id column addition (likely already exists): {e}")
+            inspector = inspect(conn)
+            table_names = inspector.get_table_names()
+            
+            # 1. Initialize tables if empty
+            if not table_names or "users" not in table_names:
+                print("MIGRATION: Initializing database tables...")
+                models.Base.metadata.create_all(bind=conn)
+                # Re-inspect table names
+                inspector = inspect(conn)
+                table_names = inspector.get_table_names()
 
-    # 2. Ensure is_reviewed exists in applicants
-    try:
-        with engine.begin() as conn:
-            conn.execute(text("ALTER TABLE applicants ADD COLUMN is_reviewed BOOLEAN DEFAULT FALSE"))
-        print("MIGRATION: Added is_reviewed column to applicants table.")
-    except Exception as e:
-        print(f"MIGRATION INFO: Skip is_reviewed column addition (likely already exists): {e}")
+            # 2. Add columns if missing
+            if "jobs" in table_names:
+                columns = [c["name"] for c in inspector.get_columns("jobs")]
+                if "user_id" not in columns:
+                    conn.execute(text("ALTER TABLE jobs ADD COLUMN user_id INTEGER REFERENCES users(id) ON DELETE CASCADE"))
+                    print("MIGRATION: Added user_id column to jobs table.")
 
-    # 3. Ensure results exists in scheduled_emails
-    try:
-        with engine.begin() as conn:
-            conn.execute(text("ALTER TABLE scheduled_emails ADD COLUMN results JSON"))
-        print("MIGRATION: Added results column to scheduled_emails.")
-    except Exception as e:
-        print(f"MIGRATION INFO: Skip results column addition (likely already exists): {e}")
+            if "applicants" in table_names:
+                columns = [c["name"] for c in inspector.get_columns("applicants")]
+                if "is_reviewed" not in columns:
+                    conn.execute(text("ALTER TABLE applicants ADD COLUMN is_reviewed BOOLEAN DEFAULT FALSE"))
+                    print("MIGRATION: Added is_reviewed column to applicants table.")
 
-    # 3. PostgreSQL Row-Level Security (RLS) configuration
-    if not engine.url.drivername.startswith("sqlite"):
-        try:
-            with engine.begin() as conn:
-                # Enable and Force RLS on jobs
+            if "scheduled_emails" in table_names:
+                columns = [c["name"] for c in inspector.get_columns("scheduled_emails")]
+                if "results" not in columns:
+                    conn.execute(text("ALTER TABLE scheduled_emails ADD COLUMN results JSON"))
+                    print("MIGRATION: Added results column to scheduled_emails.")
+
+            # 3. PostgreSQL RLS Configuration
+            if not engine.url.drivername.startswith("sqlite"):
                 conn.execute(text("ALTER TABLE jobs ENABLE ROW LEVEL SECURITY"))
                 conn.execute(text("ALTER TABLE jobs FORCE ROW LEVEL SECURITY"))
-                
-                # Enable and Force RLS on applicants
                 conn.execute(text("ALTER TABLE applicants ENABLE ROW LEVEL SECURITY"))
                 conn.execute(text("ALTER TABLE applicants FORCE ROW LEVEL SECURITY"))
                 
-                # Drop existing policies
                 conn.execute(text("DROP POLICY IF EXISTS jobs_user_policy ON jobs"))
                 conn.execute(text("DROP POLICY IF EXISTS applicants_user_policy ON applicants"))
                 
-                # Create jobs user policy matching the connection's session variable
                 conn.execute(text(
                     "CREATE POLICY jobs_user_policy ON jobs "
                     "USING (user_id = NULLIF(current_setting('app.current_user_id', true), '')::integer)"
                 ))
-                
-                # Create applicants user policy checking if the job is accessible
                 conn.execute(text(
                     "CREATE POLICY applicants_user_policy ON applicants "
                     "USING (job_id IN (SELECT id FROM jobs))"
                 ))
-            print("MIGRATION SUCCESS: Configured PostgreSQL Row-Level Security (RLS) policies.")
-        except Exception as e:
-            print(f"MIGRATION ERROR: Failed to configure PostgreSQL RLS: {e}")
+                print("MIGRATION SUCCESS: Configured PostgreSQL Row-Level Security (RLS) policies.")
+    except Exception as e:
+        print(f"MIGRATION ERROR: Failed to run database initialization or migrations: {e}")
 
-run_migrations()
+# Run migrations at startup unless explicitly skipped
+if os.getenv("SKIP_MIGRATIONS") != "1":
+    run_migrations()
 
 app = FastAPI(title="Smart Resume Screener")
 

@@ -15,16 +15,24 @@ if SQLALCHEMY_DATABASE_URL.startswith("sqlite"):
         connect_args={"check_same_thread": False},
         pool_pre_ping=True
     )
-else:
     # Ensure postgres scheme compatibility (SQLAlchemy 2.0 requires postgresql:// instead of postgres://)
     if SQLALCHEMY_DATABASE_URL.startswith("postgres://"):
         SQLALCHEMY_DATABASE_URL = SQLALCHEMY_DATABASE_URL.replace("postgres://", "postgresql://", 1)
     print("DATABASE CONNECTION: Using hosted PostgreSQL database.")
-    engine = create_engine(
-        SQLALCHEMY_DATABASE_URL,
-        pool_pre_ping=True,
-        pool_recycle=300
-    )
+    
+    # Optimize connection configuration for serverless (Vercel) environments
+    if os.getenv("VERCEL") == "1":
+        from sqlalchemy.pool import NullPool
+        engine = create_engine(
+            SQLALCHEMY_DATABASE_URL,
+            poolclass=NullPool
+        )
+    else:
+        engine = create_engine(
+            SQLALCHEMY_DATABASE_URL,
+            pool_pre_ping=True,
+            pool_recycle=300
+        )
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
