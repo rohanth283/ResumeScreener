@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, JSON, Boolean
+from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, JSON, Boolean, LargeBinary
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from database import Base
@@ -51,9 +51,14 @@ class Applicant(Base):
     skills_matched = Column(JSON, nullable=False)  # List of strings matching job reqs
     skills_missing = Column(JSON, nullable=False)  # List of strings missing from candidate
     is_reviewed = Column(Boolean, default=False, nullable=True)
+    resume_pdf_bytes = Column(LargeBinary, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     job = relationship("Job", back_populates="applicants")
+
+    @property
+    def has_resume_pdf(self) -> bool:
+        return self.resume_pdf_bytes is not None
 
 
 class ScheduledEmail(Base):

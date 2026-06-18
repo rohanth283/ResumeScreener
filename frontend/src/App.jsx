@@ -1083,6 +1083,9 @@ function App() {
         applicant={activeApplicant}
         onRescreen={handleRescreenTrigger}
         onToggleReview={handleToggleReview}
+        token={token}
+        apiUrl={API_URL}
+        jobId={activeJob ? activeJob.id : null}
       />
 
       <EmailTemplateDrawer

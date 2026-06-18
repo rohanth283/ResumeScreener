@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import './AnalysisDrawer.css';
 
-export default function AnalysisDrawer({ isOpen, onClose, applicant, onRescreen, onToggleReview }) {
+export default function AnalysisDrawer({ isOpen, onClose, applicant, onRescreen, onToggleReview, token, apiUrl, jobId }) {
   const [shouldRender, setShouldRender] = useState(isOpen);
   const [activeTab, setActiveTab] = useState('report');
 
@@ -173,7 +173,7 @@ export default function AnalysisDrawer({ isOpen, onClose, applicant, onRescreen,
               </div>
             </>
           ) : (
-            <div className="resume-viewer-tab">
+            <div className="resume-viewer-tab" style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: '500px' }}>
               <div className="resume-viewer-header">
                 <span className="file-info" title={applicant.resume_filename}>
                   📄 {applicant.resume_filename}
@@ -186,9 +186,24 @@ export default function AnalysisDrawer({ isOpen, onClose, applicant, onRescreen,
                   Download (.txt)
                 </button>
               </div>
-              <pre className="resume-text-content">
-                {applicant.resume_text}
-              </pre>
+              {applicant.has_resume_pdf ? (
+                <iframe
+                  src={`${apiUrl}/jobs/${jobId}/applicants/${applicant.id}/resume?token=${token}`}
+                  title={`Resume PDF - ${applicant.name}`}
+                  style={{
+                    width: '100%',
+                    height: '600px',
+                    border: '1px solid var(--border)',
+                    borderRadius: 'var(--radius)',
+                    marginTop: '12px',
+                    backgroundColor: '#ffffff'
+                  }}
+                />
+              ) : (
+                <pre className="resume-text-content">
+                  {applicant.resume_text}
+                </pre>
+              )}
             </div>
           )}
         </div>

@@ -5,13 +5,14 @@ from dotenv import load_dotenv
 # Load environment variables at the very beginning of application startup
 load_dotenv(Path(__file__).resolve().parent / ".env")
 
-from fastapi import FastAPI, File, Form, UploadFile, Depends, HTTPException, status
+from fastapi import FastAPI, File, Form, UploadFile, Depends, HTTPException, status, Query, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from jose import JWTError, jwt
+from typing import Optional
 
 from extractor import extract_text
 from screener import screen_resume
@@ -50,6 +51,10 @@ def run_migrations():
                 if "is_reviewed" not in columns:
                     conn.execute(text("ALTER TABLE applicants ADD COLUMN is_reviewed BOOLEAN DEFAULT FALSE"))
                     print("MIGRATION: Added is_reviewed column to applicants table.")
+                if "resume_pdf_bytes" not in columns:
+                    col_type = "BLOB" if engine.url.drivername.startswith("sqlite") else "BYTEA"
+                    conn.execute(text(f"ALTER TABLE applicants ADD COLUMN resume_pdf_bytes {col_type}"))
+                    print(f"MIGRATION: Added resume_pdf_bytes column to applicants table ({col_type}).")
 
             if "scheduled_emails" in table_names:
                 columns = [c["name"] for c in inspector.get_columns("scheduled_emails")]
@@ -103,21 +108,33 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-security = HTTPBearer()
+security = HTTPBearer(auto_error=False)
 
 # Authentication Dependency (SSO)
 async def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(security),
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
+    token: Optional[str] = Query(None),
     db: Session = Depends(get_db)
 ) -> models.User:
-    token = credentials.credentials
+    token_str = None
+    if credentials:
+        token_str = credentials.credentials
+    elif token:
+        token_str = token
+        
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
+    if not token_str:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authenticated",
+        )
+        
     try:
-        payload = jwt.decode(token, auth.SECRET_KEY, algorithms=[auth.ALGORITHM])
+        payload = jwt.decode(token_str, auth.SECRET_KEY, algorithms=[auth.ALGORITHM])
         email: str = payload.get("sub")
         if email is None:
             raise credentials_exception
@@ -475,6 +492,7 @@ async def screen_applicant_resume(
             existing_applicant.name = screening_res.get("candidate_name", "Unknown Candidate")
             existing_applicant.resume_filename = resume_file.filename
             existing_applicant.resume_text = resume_text
+            existing_applicant.resume_pdf_bytes = file_bytes
             existing_applicant.match_score = screening_res["match_score"]
             existing_applicant.summary = screening_res["summary"]
             existing_applicant.strengths = screening_res["strengths"]
@@ -494,6 +512,7 @@ async def screen_applicant_resume(
                 name=screening_res.get("candidate_name", "Unknown Candidate"),
                 resume_filename=resume_file.filename,
                 resume_text=resume_text,
+                resume_pdf_bytes=file_bytes,
                 match_score=screening_res["match_score"],
                 summary=screening_res["summary"],
                 strengths=screening_res["strengths"],
@@ -573,6 +592,7 @@ async def rescreen_applicant_resume(
         applicant.name = screening_res.get("candidate_name", "Unknown Candidate")
         applicant.resume_filename = resume_file.filename
         applicant.resume_text = resume_text
+        applicant.resume_pdf_bytes = file_bytes
         applicant.match_score = screening_res["match_score"]
         applicant.summary = screening_res["summary"]
         applicant.strengths = screening_res["strengths"]
@@ -634,6 +654,51 @@ def toggle_applicant_review(
     db.commit()
     db.refresh(applicant)
     return applicant
+
+
+@app.get("/jobs/{job_id}/applicants/{applicant_id}/resume")
+def get_applicant_resume_file(
+    job_id: int,
+    applicant_id: int,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    # Verify job ownership
+    job = db.query(models.Job).filter(models.Job.id == job_id).first()
+    if not job:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Job position not found."
+        )
+    if job.user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to access this candidate."
+        )
+        
+    applicant = db.query(models.Applicant).filter(
+        models.Applicant.id == applicant_id,
+        models.Applicant.job_id == job_id
+    ).first()
+    if not applicant:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Candidate record not found."
+        )
+        
+    if not applicant.resume_pdf_bytes:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Resume document was not saved as binary payload."
+        )
+        
+    media_type = "application/pdf" if applicant.resume_filename.lower().endswith(".pdf") else "text/plain"
+    
+    return Response(
+        content=applicant.resume_pdf_bytes,
+        media_type=media_type,
+        headers={"Content-Disposition": f"inline; filename=\"{applicant.resume_filename}\""}
+    )
 
 
 @app.post("/jobs/{job_id}/applicants/send-email")

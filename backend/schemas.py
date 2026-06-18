@@ -74,6 +74,7 @@ class ApplicantResponse(BaseModel):
     skills_matched: List[str]
     skills_missing: List[str]
     is_reviewed: Optional[bool] = False
+    has_resume_pdf: bool = False
     created_at: datetime
 
     class Config:
