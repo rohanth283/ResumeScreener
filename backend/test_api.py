@@ -193,6 +193,69 @@ def test_full_recruiter_flow():
     assert response.status_code == 404
 
 
+def test_delete_applicant_flow():
+    # 1. Signup recruiter user
+    signup_payload = {
+        "email": "recruiter_del@example.com",
+        "password": "securepassword",
+        "name": "Jane Recruiter"
+    }
+    response = client.post("/auth/signup", json=signup_payload)
+    assert response.status_code == 200
+    auth_data = response.json()
+    token = auth_data["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    # 2. Create a new Job
+    job_payload = {
+        "title": "Software Engineer",
+        "description": "FastAPI and React experience required."
+    }
+    response = client.post("/jobs", json=job_payload, headers=headers)
+    job_id = response.json()["id"]
+
+    # 3. Screen a candidate's resume
+    screen_payload = {"email": "candidate_del@example.com"}
+    resume_file = ("resume.txt", b"FastAPI, SQL, React", "text/plain")
+    response = client.post(
+        f"/jobs/{job_id}/screen",
+        data=screen_payload,
+        files={"resume_file": resume_file},
+        headers=headers
+    )
+    applicant_id = response.json()["id"]
+
+    # 4. Verify applicant count is 1
+    response = client.get("/jobs", headers=headers)
+    assert response.json()[0]["applicant_count"] == 1
+
+    # 5. Delete applicant from unauthorized user
+    other_signup_payload = {
+        "email": "recruiter_other@example.com",
+        "password": "securepassword",
+        "name": "Other Recruiter"
+    }
+    other_resp = client.post("/auth/signup", json=other_signup_payload)
+    other_token = other_resp.json()["access_token"]
+    other_headers = {"Authorization": f"Bearer {other_token}"}
+    
+    response = client.delete(f"/jobs/{job_id}/applicants/{applicant_id}", headers=other_headers)
+    assert response.status_code == 403
+
+    # 6. Delete applicant from correct user
+    response = client.delete(f"/jobs/{job_id}/applicants/{applicant_id}", headers=headers)
+    assert response.status_code == 200
+    assert response.json() == {"message": "Candidate deleted successfully."}
+
+    # 7. Check that applicant is gone
+    response = client.get(f"/jobs/{job_id}/applicants", headers=headers)
+    assert len(response.json()) == 0
+
+    # 8. Check job's applicant count updated in the list
+    response = client.get("/jobs", headers=headers)
+    assert response.json()[0]["applicant_count"] == 0
+
+
 def test_password_reset_flow():
     # Clean up sent_emails.log if it exists
     log_file_path = os.path.join(os.path.dirname(__file__), "sent_emails.log")

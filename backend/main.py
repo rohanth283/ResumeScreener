@@ -656,6 +656,41 @@ def toggle_applicant_review(
     return applicant
 
 
+@app.delete("/jobs/{job_id}/applicants/{applicant_id}")
+def delete_applicant(
+    job_id: int,
+    applicant_id: int,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    # Verify job ownership
+    job = db.query(models.Job).filter(models.Job.id == job_id).first()
+    if not job:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Job position not found."
+        )
+    if job.user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to delete candidates from this job."
+        )
+        
+    applicant = db.query(models.Applicant).filter(
+        models.Applicant.id == applicant_id,
+        models.Applicant.job_id == job_id
+    ).first()
+    if not applicant:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Candidate record not found."
+        )
+        
+    db.delete(applicant)
+    db.commit()
+    return {"message": "Candidate deleted successfully."}
+
+
 @app.get("/jobs/{job_id}/applicants/{applicant_id}/resume")
 def get_applicant_resume_file(
     job_id: int,

@@ -267,6 +267,30 @@
   color: var(--accent);
 }
 
+.meta-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.delete-candidate-btn {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--danger);
+  padding: 6px 14px;
+  border-radius: var(--radius);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.delete-candidate-btn:hover {
+  background: var(--danger-light);
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
 .drawer-file-label {
   font-size: 11px;
   font-weight: 600;
@@ -411,6 +435,7 @@
   border-radius: 8px;
   font-size: 13px;
   font-weight: 600;
+  cursor: pointer;
   transition: all 0.2s ease;
   user-select: none;
 }

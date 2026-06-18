@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import './AnalysisDrawer.css';
 
-export default function AnalysisDrawer({ isOpen, onClose, applicant, onRescreen, onToggleReview, token, apiUrl, jobId }) {
+export default function AnalysisDrawer({ isOpen, onClose, applicant, onRescreen, onToggleReview, onDelete, token, apiUrl, jobId }) {
   const [shouldRender, setShouldRender] = useState(isOpen);
   const [activeTab, setActiveTab] = useState('report');
 
@@ -57,13 +57,22 @@ export default function AnalysisDrawer({ isOpen, onClose, applicant, onRescreen,
               <span className="drawer-file-label">Resume File</span>
               <div className="meta-filename-row">
                 <span className="meta-filename">📄 {applicant.resume_filename}</span>
-                <button
-                  type="button"
-                  className="update-resume-btn"
-                  onClick={() => onRescreen(applicant)}
-                >
-                  Update Resume
-                </button>
+                <div className="meta-actions">
+                  <button
+                    type="button"
+                    className="update-resume-btn"
+                    onClick={() => onRescreen(applicant)}
+                  >
+                    Update Resume
+                  </button>
+                  <button
+                    type="button"
+                    className="delete-candidate-btn"
+                    onClick={() => onDelete(applicant)}
+                  >
+                    Delete Candidate
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -94,16 +103,13 @@ export default function AnalysisDrawer({ isOpen, onClose, applicant, onRescreen,
                   ⚠️ <strong>AI-Generated Evaluation:</strong> This report was compiled by AI to assist the screening process. Please conduct a manual review before making final candidate decisions.
                 </div>
                 <div className="audit-action-row">
-                  <label className="audit-toggle-container">
-                    <input 
-                      type="checkbox" 
-                      checked={applicant.is_reviewed || false} 
-                      onChange={() => onToggleReview(applicant)}
-                    />
-                    <span className={`audit-toggle-btn ${applicant.is_reviewed ? 'reviewed' : ''}`}>
-                      {applicant.is_reviewed ? "✓ Marked as Reviewed" : "Mark as Reviewed"}
-                    </span>
-                  </label>
+                  <button
+                    type="button"
+                    className={`audit-toggle-btn ${applicant.is_reviewed ? 'reviewed' : ''}`}
+                    onClick={() => onToggleReview(applicant)}
+                  >
+                    {applicant.is_reviewed ? "✓ Marked as Reviewed" : "Mark as Reviewed"}
+                  </button>
                 </div>
               </div>
               {/* Evaluation Summary */}

@@ -545,6 +545,51 @@ function App() {
     }
   };
 
+  const handleDeleteApplicant = async (applicant) => {
+    if (!window.confirm(`Are you sure you want to permanently delete candidate ${applicant.name || 'this candidate'}?`)) {
+      return;
+    }
+    try {
+      const response = await fetch(`${API_URL}/jobs/${activeJob.id}/applicants/${applicant.id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      if (response.status === 401) {
+        handleLogout();
+        return;
+      }
+      if (!response.ok) throw new Error('Could not delete candidate.');
+      
+      // Update state
+      setApplicants((prev) => prev.filter((a) => a.id !== applicant.id));
+      
+      // Decrement applicant_count on the active job card in-place
+      if (activeJob) {
+        setJobs((prevJobs) => 
+          prevJobs.map((j) => 
+            j.id === activeJob.id ? { ...j, applicant_count: Math.max(0, (j.applicant_count || 0) - 1) } : j
+          )
+        );
+        setActiveJob((prevJob) => 
+          prevJob ? { ...prevJob, applicant_count: Math.max(0, (prevJob.applicant_count || 0) - 1) } : null
+        );
+      }
+      
+      // Remove from selected ids if checked
+      setSelectedApplicantIds((prev) => prev.filter((id) => id !== applicant.id));
+      
+      // Close the drawer if the deleted applicant is the active applicant
+      if (activeApplicant && activeApplicant.id === applicant.id) {
+        setIsDrawerOpen(false);
+        setActiveApplicant(null);
+      }
+    } catch (err) {
+      alert(err.message);
+    }
+  };
+
   const handleResetPasswordSubmit = async (e) => {
     e.preventDefault();
     setResetError(null);
@@ -1083,6 +1128,7 @@ function App() {
         applicant={activeApplicant}
         onRescreen={handleRescreenTrigger}
         onToggleReview={handleToggleReview}
+        onDelete={handleDeleteApplicant}
         token={token}
         apiUrl={API_URL}
         jobId={activeJob ? activeJob.id : null}
