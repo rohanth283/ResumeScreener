@@ -776,7 +776,39 @@ function App() {
           {activeTab === 'candidates' ? (
             <div className="applicants-section">
               <div className="applicants-section-header">
-                <h4>Screened Candidates</h4>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
+                  <h4 style={{ margin: 0 }}>Screened Candidates</h4>
+                  {applicants.length > 0 && (
+                    <div className="sort-control-container" style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: 'var(--text-muted)' }}>
+                      <span>Sort:</span>
+                      <select
+                        value={`${sortBy}-${sortOrder}`}
+                        onChange={(e) => {
+                          const [field, order] = e.target.value.split('-');
+                          setSortBy(field);
+                          setSortOrder(order);
+                        }}
+                        style={{
+                          padding: '4px 8px',
+                          borderRadius: '4px',
+                          border: '1px solid var(--border)',
+                          backgroundColor: 'var(--surface)',
+                          color: 'var(--text)',
+                          fontSize: '13px',
+                          cursor: 'pointer',
+                          outline: 'none',
+                        }}
+                      >
+                        <option value="score-desc">Score: High to Low</option>
+                        <option value="score-asc">Score: Low to High</option>
+                        <option value="name-asc">Name: A to Z</option>
+                        <option value="name-desc">Name: Z to A</option>
+                        <option value="date-desc">Date Screened: Newest</option>
+                        <option value="date-asc">Date Screened: Oldest</option>
+                      </select>
+                    </div>
+                  )}
+                </div>
                 {selectedApplicantIds.length > 0 && (
                   <div style={{ display: 'flex', gap: '8px' }}>
                     <button
