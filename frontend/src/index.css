@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
 *,
 *::before,
 *::after {
@@ -5,27 +7,41 @@
 }
 
 :root {
-  --bg: #0f1419;
-  --surface: #1a2332;
-  --surface-elevated: #243044;
-  --border: #2d3a4f;
-  --text: #e8edf4;
-  --text-muted: #8b9cb3;
-  --accent: #3b82f6;
-  --accent-hover: #2563eb;
-  --success: #22c55e;
-  --warning: #f59e0b;
-  --danger: #ef4444;
-  --radius: 12px;
+  /* Google/Material Design 3 Light Color System */
+  --bg: #F8F9FA;
+  --surface: #FFFFFF;
+  --surface-hover: #F1F3F4;
+  --surface-elevated: #FFFFFF;
+  --border: #DADCE0;
+  --text: #202124;
+  --text-muted: #5F6368;
+  --accent: #1A73E8;
+  --accent-hover: #1557B0;
+  --accent-light: #E8F0FE;
+  
+  --success: #188038;
+  --success-light: #E6F4EA;
+  --warning: #F9AB00;
+  --warning-light: #FEF7E0;
+  --danger: #D93025;
+  --danger-light: #FCE8E6;
+  
+  --radius: 8px;
+  
+  /* Material-style Shadows */
+  --shadow-sm: 0 1px 2px 0 rgba(60,64,67,0.3), 0 1px 3px 1px rgba(60,64,67,0.15);
+  --shadow-md: 0 1px 3px 0 rgba(60,64,67,0.3), 0 4px 8px 3px rgba(60,64,67,0.15);
 }
 
 body {
   margin: 0;
-  font-family: 'DM Sans', system-ui, -apple-system, sans-serif;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   background: var(--bg);
   color: var(--text);
-  line-height: 1.6;
+  line-height: 1.5;
   min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 #root {

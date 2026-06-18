@@ -1,7 +1,7 @@
 .job-dashboard {
   max-width: 1200px;
   margin: 0 auto;
-  padding: 0 1.5rem 4rem;
+  padding: 24px 1.5rem 4rem;
   font-family: 'Inter', sans-serif;
 }
 
@@ -15,27 +15,27 @@
 .dashboard-header h2 {
   font-size: 24px;
   font-weight: 700;
-  color: #f8fafc;
+  color: var(--text);
   margin: 0;
 }
 
 .add-job-btn {
-  background: linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%);
+  background: var(--accent);
   border: none;
-  border-radius: 10px;
+  border-radius: var(--radius);
   color: white;
   padding: 10px 20px;
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
-  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25);
+  box-shadow: var(--shadow-sm);
   transition: all 0.2s ease;
 }
 
 .add-job-btn:hover {
-  filter: brightness(1.1);
+  background: var(--accent-hover);
   transform: translateY(-1px);
-  box-shadow: 0 6px 16px rgba(79, 70, 229, 0.35);
+  box-shadow: var(--shadow-md);
 }
 
 .jobs-grid {
@@ -45,31 +45,32 @@
 }
 
 .job-card {
-  background: rgba(30, 41, 59, 0.5);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  border-radius: 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
   padding: 24px;
   cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   display: flex;
   flex-direction: column;
   justify-content: space-between;
   min-height: 200px;
   box-sizing: border-box;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
 .job-card:hover {
   transform: translateY(-4px);
-  background: rgba(30, 41, 59, 0.85);
-  border-color: rgba(99, 102, 241, 0.3);
-  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.3);
+  background: var(--surface);
+  border-color: var(--accent);
+  box-shadow: var(--shadow-md);
 }
 
 .job-card-top h3 {
   margin: 0 0 12px;
   font-size: 18px;
   font-weight: 600;
-  color: #f8fafc;
+  color: var(--text);
   line-height: 1.4;
 }
 
@@ -85,22 +86,22 @@
   font-weight: 500;
   padding: 4px 10px;
   border-radius: 6px;
-  background: rgba(255, 255, 255, 0.04);
-  color: #94a3b8;
-  border: 1px solid rgba(255, 255, 255, 0.04);
+  background: var(--bg);
+  color: var(--text-muted);
+  border: 1px solid var(--border);
 }
 
 .badge.employment-type {
-  background: rgba(99, 102, 241, 0.1);
-  color: #a5b4fc;
-  border-color: rgba(99, 102, 241, 0.15);
+  background: var(--accent-light);
+  color: var(--accent);
+  border-color: rgba(26, 115, 232, 0.15);
 }
 
 .job-card-bottom {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  border-top: 1px solid var(--border);
   padding-top: 16px;
   margin-top: 16px;
 }
@@ -110,13 +111,13 @@
   align-items: center;
   gap: 6px;
   font-size: 13px;
-  color: #cbd5e1;
+  color: var(--text-muted);
 }
 
 .count-number {
   font-weight: 700;
-  background: rgba(59, 130, 246, 0.2);
-  color: #60a5fa;
+  background: var(--accent-light);
+  color: var(--accent);
   padding: 2px 8px;
   border-radius: 50px;
   font-size: 11px;
@@ -125,27 +126,29 @@
 .view-link {
   font-size: 13px;
   font-weight: 600;
-  color: #6366f1;
+  color: var(--accent);
   transition: color 0.2s ease;
 }
 
 .job-card:hover .view-link {
-  color: #818cf8;
+  color: var(--accent-hover);
 }
 
 /* Empty State Card */
 .job-card.create-card {
-  border: 2px dashed rgba(255, 255, 255, 0.1);
+  border: 2px dashed var(--border);
   background: transparent;
   justify-content: center;
   align-items: center;
   min-height: 200px;
   text-align: center;
+  box-shadow: none;
 }
 
 .job-card.create-card:hover {
-  border-color: rgba(99, 102, 241, 0.5);
-  background: rgba(30, 41, 59, 0.2);
+  border-color: var(--accent);
+  background: var(--surface-hover);
+  transform: translateY(-4px);
 }
 
 .create-card-content {
@@ -153,27 +156,28 @@
   flex-direction: column;
   align-items: center;
   gap: 12px;
-  color: #94a3b8;
+  color: var(--text-muted);
 }
 
 .plus-icon {
   font-size: 36px;
   font-weight: 300;
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--bg);
   width: 54px;
   height: 54px;
   border-radius: 50%;
   display: flex;
   justify-content: center;
   align-items: center;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  transition: all 0.3s ease;
+  border: 1px solid var(--border);
+  transition: all 0.2s ease;
+  color: var(--text-muted);
 }
 
 .job-card.create-card:hover .plus-icon {
-  background: rgba(99, 102, 241, 0.1);
-  border-color: rgba(99, 102, 241, 0.3);
-  color: #818cf8;
+  background: var(--accent-light);
+  border-color: var(--accent);
+  color: var(--accent);
   transform: scale(1.05);
 }
 
@@ -181,13 +185,13 @@
   margin: 0;
   font-size: 16px;
   font-weight: 600;
-  color: #e2e8f0;
+  color: var(--text);
 }
 
 .create-card p {
   margin: 0;
   font-size: 12px;
-  color: #64748b;
+  color: var(--text-muted);
   max-width: 200px;
 }
 
@@ -195,17 +199,20 @@
 .job-card.skeleton {
   cursor: default;
   pointer-events: none;
+  background: var(--surface);
+  border-color: var(--border);
+  box-shadow: none;
 }
 
 .job-card.skeleton:hover {
   transform: none;
-  background: rgba(30, 41, 59, 0.5);
-  border-color: rgba(255, 255, 255, 0.05);
+  background: var(--surface);
+  border-color: var(--border);
   box-shadow: none;
 }
 
 .skeleton-text {
-  background: linear-gradient(90deg, rgba(255, 255, 255, 0.04) 25%, rgba(255, 255, 255, 0.09) 50%, rgba(255, 255, 255, 0.04) 75%);
+  background: linear-gradient(90deg, var(--bg) 25%, var(--surface-hover) 50%, var(--bg) 75%);
   background-size: 200% 100%;
   animation: skeleton-pulse-animation 1.5s infinite linear;
   border-radius: 6px;
@@ -241,4 +248,3 @@
     background-position: -200% 0;
   }
 }
-

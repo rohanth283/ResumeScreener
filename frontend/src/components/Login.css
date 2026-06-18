@@ -3,23 +3,20 @@
   justify-content: center;
   align-items: center;
   min-height: 100vh;
-  background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+  background: var(--bg);
   padding: 20px;
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
-  color: #f8fafc;
+  color: var(--text);
 }
 
 .login-card {
   width: 100%;
   max-width: 440px;
-  background: rgba(30, 41, 59, 0.7);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px border-radius rgba(255, 255, 255, 0.08);
-  border-radius: 24px;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+  background: var(--surface);
+  border-radius: 16px;
+  box-shadow: var(--shadow-md);
   padding: 40px;
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border);
 }
 
 .login-header {
@@ -30,47 +27,46 @@
 .login-header h2 {
   font-size: 28px;
   font-weight: 700;
-  background: linear-gradient(to right, #38bdf8, #818cf8);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: var(--accent);
   margin-bottom: 8px;
+  letter-spacing: -0.01em;
 }
 
 .login-header p {
-  color: #94a3b8;
+  color: var(--text-muted);
   font-size: 14px;
 }
 
 .tabs {
   display: flex;
-  background: rgba(15, 23, 42, 0.6);
+  background: var(--bg);
   padding: 4px;
-  border-radius: 12px;
+  border-radius: var(--radius);
   margin-bottom: 24px;
-  border: 1px solid rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border);
 }
 
 .tab-btn {
   flex: 1;
   background: transparent;
   border: none;
-  color: #94a3b8;
+  color: var(--text-muted);
   padding: 10px;
   font-size: 14px;
   font-weight: 600;
-  border-radius: 8px;
+  border-radius: 6px;
   cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.2s ease;
 }
 
 .tab-btn:hover {
-  color: #f8fafc;
+  color: var(--text);
 }
 
 .tab-btn.active {
-  background: rgba(255, 255, 255, 0.08);
-  color: #f8fafc;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  background: var(--surface);
+  color: var(--accent);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
 .form-group {
@@ -81,7 +77,7 @@
   display: block;
   font-size: 13px;
   font-weight: 500;
-  color: #cbd5e1;
+  color: var(--text-muted);
   margin-bottom: 8px;
 }
 
@@ -92,41 +88,41 @@
 .form-group input {
   width: 100%;
   padding: 12px 16px;
-  background: rgba(15, 23, 42, 0.4);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 12px;
-  color: #f8fafc;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
   font-size: 14px;
-  transition: all 0.3s ease;
+  transition: all 0.2s ease;
   box-sizing: border-box;
 }
 
 .form-group input:focus {
   outline: none;
-  border-color: #6366f1;
-  background: rgba(15, 23, 42, 0.6);
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+  border-color: var(--accent);
+  background: var(--surface);
+  box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.15);
 }
 
 .submit-btn {
   width: 100%;
   padding: 14px;
-  background: linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%);
+  background: var(--accent);
   border: none;
-  border-radius: 12px;
+  border-radius: var(--radius);
   color: #ffffff;
   font-size: 15px;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: all 0.2s ease;
   margin-top: 10px;
-  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+  box-shadow: var(--shadow-sm);
 }
 
 .submit-btn:hover:not(:disabled) {
   transform: translateY(-1px);
-  filter: brightness(1.1);
-  box-shadow: 0 6px 16px rgba(79, 70, 229, 0.4);
+  background: var(--accent-hover);
+  box-shadow: var(--shadow-md);
 }
 
 .submit-btn:active:not(:disabled) {
@@ -142,7 +138,7 @@
   display: flex;
   align-items: center;
   text-align: center;
-  color: #64748b;
+  color: var(--text-muted);
   font-size: 12px;
   margin: 24px 0;
 }
@@ -151,7 +147,7 @@
 .divider::after {
   content: '';
   flex: 1;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid var(--border);
 }
 
 .divider:not(:empty)::before {
@@ -169,10 +165,10 @@
 }
 
 .error-message {
-  background: rgba(239, 68, 68, 0.1);
-  border: 1px solid rgba(239, 68, 68, 0.2);
-  border-radius: 12px;
-  color: #f87171;
+  background: var(--danger-light);
+  border: 1px solid rgba(217, 48, 37, 0.2);
+  border-radius: var(--radius);
+  color: var(--danger);
   padding: 12px 16px;
   font-size: 13px;
   margin-bottom: 20px;
@@ -180,10 +176,10 @@
 }
 
 .success-message {
-  background: rgba(34, 197, 94, 0.1);
-  border: 1px solid rgba(34, 197, 94, 0.2);
-  border-radius: 12px;
-  color: #4ade80;
+  background: var(--success-light);
+  border: 1px solid rgba(24, 128, 56, 0.2);
+  border-radius: var(--radius);
+  color: var(--success);
   padding: 12px 16px;
   font-size: 13px;
   margin-bottom: 20px;
@@ -206,23 +202,23 @@
   border: none;
   font-size: 12px;
   font-weight: 500;
-  color: #818cf8;
+  color: var(--accent);
   cursor: pointer;
   padding: 0;
   transition: color 0.2s ease;
 }
 
 .forgot-pwd-link:hover {
-  color: #a5b4fc;
+  color: var(--accent-hover);
   text-decoration: underline;
 }
 
 .back-login-btn {
   width: 100%;
-  background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 12px;
-  color: #cbd5e1;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text-muted);
   padding: 12px;
   font-size: 14px;
   font-weight: 500;
@@ -233,8 +229,7 @@
 }
 
 .back-login-btn:hover {
-  background: rgba(255, 255, 255, 0.05);
-  color: #f8fafc;
-  border-color: rgba(255, 255, 255, 0.2);
+  background: var(--surface-hover);
+  color: var(--text);
+  border-color: var(--border);
 }
-

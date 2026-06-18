@@ -3,6 +3,7 @@
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 1.75rem;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
   animation: fadeIn 0.35s ease;
 }
 
@@ -28,6 +29,7 @@
   margin: 0;
   font-size: 1.35rem;
   font-weight: 600;
+  color: var(--text);
 }
 
 .score-badge {
@@ -40,17 +42,17 @@
 }
 
 .score-badge--high {
-  background: rgba(34, 197, 94, 0.15);
+  background: var(--success-light);
   color: var(--success);
 }
 
 .score-badge--medium {
-  background: rgba(245, 158, 11, 0.15);
-  color: var(--warning);
+  background: var(--warning-light);
+  color: #B06000;
 }
 
 .score-badge--low {
-  background: rgba(239, 68, 68, 0.15);
+  background: var(--danger-light);
   color: var(--danger);
 }
 
@@ -67,7 +69,7 @@
 
 .score-bar-container {
   height: 8px;
-  background: var(--surface-elevated);
+  background: var(--bg);
   border-radius: 999px;
   overflow: hidden;
   margin-bottom: 1.5rem;
@@ -105,7 +107,7 @@
 }
 
 .section-improvements {
-  color: var(--warning) !important;
+  color: #B06000 !important;
 }
 
 .score-section p {
