@@ -519,6 +519,16 @@ function App() {
   };
 
   const handleToggleReview = async (applicant) => {
+    // Optimistic UI Update: Toggle status instantly
+    const originalStatus = applicant.is_reviewed || false;
+    const optimisticStatus = !originalStatus;
+    const optimisticApplicant = { ...applicant, is_reviewed: optimisticStatus };
+
+    setApplicants((prev) => prev.map((a) => (a.id === applicant.id ? optimisticApplicant : a)));
+    if (activeApplicant && activeApplicant.id === applicant.id) {
+      setActiveApplicant(optimisticApplicant);
+    }
+
     try {
       const response = await fetch(`${API_URL}/jobs/${activeJob.id}/applicants/${applicant.id}/review`, {
         method: 'PUT',
@@ -527,20 +537,28 @@ function App() {
         }
       });
       if (response.status === 401) {
+        // Rollback state on auth error
+        setApplicants((prev) => prev.map((a) => (a.id === applicant.id ? applicant : a)));
+        if (activeApplicant && activeApplicant.id === applicant.id) {
+          setActiveApplicant(applicant);
+        }
         handleLogout();
         return;
       }
       if (!response.ok) throw new Error('Could not update candidate review status.');
       const data = await response.json();
 
-      // Update state in-place
+      // Ensure sync with server data
       setApplicants((prev) => prev.map((a) => (a.id === applicant.id ? data : a)));
-      
-      // Update activeApplicant if it's currently selected
       if (activeApplicant && activeApplicant.id === applicant.id) {
         setActiveApplicant(data);
       }
     } catch (err) {
+      // Rollback state on network/API failure
+      setApplicants((prev) => prev.map((a) => (a.id === applicant.id ? applicant : a)));
+      if (activeApplicant && activeApplicant.id === applicant.id) {
+        setActiveApplicant(applicant);
+      }
       alert(err.message);
     }
   };
