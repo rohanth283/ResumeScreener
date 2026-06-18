@@ -51,8 +51,18 @@ export default function AnalysisDrawer({ isOpen, onClose, applicant, onRescreen,
             <div className={`score-circle ${scoreClass}`}>
               {score}%
             </div>
-            <div className="candidate-meta">
-              <h4>{applicant.name || 'Unknown Candidate'}</h4>
+            <div className="candidate-meta" style={{ flex: 1 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', gap: '12px' }}>
+                <h4 style={{ margin: 0 }}>{applicant.name || 'Unknown Candidate'}</h4>
+                <button
+                  type="button"
+                  className={`drawer-flag-btn ${applicant.is_reviewed ? 'flagged' : ''}`}
+                  onClick={() => onToggleReview(applicant)}
+                  title={applicant.is_reviewed ? "Marked as Reviewed" : "Mark as Reviewed"}
+                >
+                  ⚑
+                </button>
+              </div>
               <p>{applicant.email}</p>
               <span className="drawer-file-label">Resume File</span>
               <div className="meta-filename-row">
@@ -97,20 +107,18 @@ export default function AnalysisDrawer({ isOpen, onClose, applicant, onRescreen,
 
           {activeTab === 'report' ? (
             <>
-              {/* Human-in-the-loop Audit Section */}
-              <div className="audit-section">
-                <div className="audit-disclaimer">
-                  ⚠️ <strong>AI-Generated Evaluation:</strong> This report was compiled by AI to assist the screening process. Please conduct a manual review before making final candidate decisions.
-                </div>
-                <div className="audit-action-row">
-                  <button
-                    type="button"
-                    className={`audit-toggle-btn ${applicant.is_reviewed ? 'reviewed' : ''}`}
-                    onClick={() => onToggleReview(applicant)}
-                  >
-                    {applicant.is_reviewed ? "✓ Marked as Reviewed" : "Mark as Reviewed"}
-                  </button>
-                </div>
+              {/* AI Disclaimer Card */}
+              <div className="audit-disclaimer-card" style={{
+                background: 'var(--warning-light)',
+                border: '1px solid rgba(249, 171, 0, 0.25)',
+                borderRadius: '12px',
+                padding: '12px 16px',
+                fontSize: '12px',
+                lineHeight: '1.5',
+                color: '#B06000',
+                marginBottom: '16px'
+              }}>
+                ⚠️ <strong>AI-Generated Evaluation:</strong> This report was compiled by AI to assist the screening process. Please conduct a manual review before making final candidate decisions.
               </div>
               {/* Evaluation Summary */}
               <div className="detail-block">

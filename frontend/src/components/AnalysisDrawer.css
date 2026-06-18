@@ -477,3 +477,31 @@
   line-height: 1;
   vertical-align: middle;
 }
+
+.drawer-flag-btn {
+  background: transparent;
+  border: none;
+  font-size: 26px;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  transition: all 0.2s ease;
+  color: var(--text-muted);
+  opacity: 0.35;
+  outline: none;
+  line-height: 1;
+}
+
+.drawer-flag-btn:hover {
+  background: var(--surface-hover);
+  color: var(--warning);
+  opacity: 0.8;
+}
+
+.drawer-flag-btn.flagged {
+  color: var(--warning);
+  opacity: 1;
+}
