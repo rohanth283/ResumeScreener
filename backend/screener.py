@@ -2,6 +2,7 @@ import json
 import os
 import re
 import requests
+import httpx
 from typing import Any
 
 PROMPT_TEMPLATE = """You are an AI technical recruiter. Analyze the candidate resume against the job description below using the Universal Performance Metric (100 Points).
@@ -43,9 +44,9 @@ Return ONLY a valid JSON object with these exact fields:
 - candidate_name: string (the candidate's real name extracted from the resume)
 - candidate_email: string (the candidate's email address extracted from the resume)
 - match_score: integer (0–100 calculated using the rules above)
-- summary: array of exactly 3 short, concise bullet-point strings. These must summarize the assessment and mention the extracted Top 3 Must-Have Requirements and how they align.
-- strengths: array of exactly 3 strings describing where the candidate matches well, referencing specific evidence/bullet points from the resume.
-- improvements: array of exactly 3 strings describing gaps, areas to improve, or deductions (e.g., missing metrics, career gaps, or ignored competencies).
+- summary: array of exactly 3 short, concise bullet-point strings (maximum 15 words per bullet). These must summarize the assessment and mention the extracted Top 3 Must-Have Requirements and how they align.
+- strengths: array of exactly 3 concise strings (maximum 15 words per bullet) describing where the candidate matches well, referencing specific evidence/bullet points from the resume.
+- improvements: array of exactly 3 concise strings (maximum 15 words per bullet) describing gaps, areas to improve, or deductions (e.g., missing metrics, career gaps, or ignored competencies).
 - skills_matched: array of strings containing technical/soft skills the candidate has that are listed or implied in the job description
 - skills_missing: array of strings containing required skills from the job description that the candidate lacks
 
@@ -168,7 +169,7 @@ def _format_groq_error(exc: Exception) -> str:
     return f"Groq AI API call failed: {message}"
 
 
-def _call_groq(prompt: str) -> str:
+async def _call_groq(prompt: str) -> str:
     api_key = _get_groq_api_key()
     model_name = os.getenv("GROQ_MODEL", DEFAULT_GROQ_MODEL)
     
@@ -186,12 +187,12 @@ def _call_groq(prompt: str) -> str:
         "response_format": {"type": "json_object"}
     }
     
-    response = requests.post(
-        "https://api.groq.com/openai/v1/chat/completions",
-        headers=headers,
-        json=payload,
-        timeout=30
-    )
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        response = await client.post(
+            "https://api.groq.com/openai/v1/chat/completions",
+            headers=headers,
+            json=payload
+        )
     
     if response.status_code != 200:
         raise RuntimeError(f"Groq API returned error status {response.status_code}: {response.text}")
@@ -203,7 +204,7 @@ def _call_groq(prompt: str) -> str:
         raise ValueError(f"Unexpected response structure from Groq: {result}") from exc
 
 
-def screen_resume(job_description: str, resume_text: str, priority_skills: str = "") -> dict[str, Any]:
+async def screen_resume(job_description: str, resume_text: str, priority_skills: str = "") -> dict[str, Any]:
     """Build prompt, call LLM, and return validated screening result."""
     if not os.getenv("GROQ_API_KEY"):
         # Local development/testing fallback when API key is not set
@@ -233,7 +234,7 @@ def screen_resume(job_description: str, resume_text: str, priority_skills: str =
     prompt = build_prompt(job_description, resume_text, priority_skills)
 
     try:
-        raw_response = _call_groq(prompt)
+        raw_response = await _call_groq(prompt)
     except Exception as exc:
         raise RuntimeError(_format_groq_error(exc)) from exc
 

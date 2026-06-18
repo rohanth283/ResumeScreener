@@ -20,7 +20,7 @@ class Job(Base):
     __tablename__ = "jobs"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=True) # nullable=True for backwards-compatibility migration
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=True, index=True) # nullable=True for backwards-compatibility migration
     title = Column(String, nullable=False)
     department = Column(String, nullable=True)
     location = Column(String, nullable=True)
@@ -39,8 +39,8 @@ class Applicant(Base):
     __tablename__ = "applicants"
 
     id = Column(Integer, primary_key=True, index=True)
-    job_id = Column(Integer, ForeignKey("jobs.id", ondelete="CASCADE"), nullable=False)
-    email = Column(String, nullable=False)
+    job_id = Column(Integer, ForeignKey("jobs.id", ondelete="CASCADE"), nullable=False, index=True)
+    email = Column(String, nullable=False, index=True)
     name = Column(String, nullable=True)  # Extracted from resume by AI
     resume_filename = Column(String, nullable=False)
     resume_text = Column(String, nullable=False)
@@ -60,7 +60,7 @@ class ScheduledEmail(Base):
     __tablename__ = "scheduled_emails"
 
     id = Column(Integer, primary_key=True, index=True)
-    job_id = Column(Integer, ForeignKey("jobs.id", ondelete="CASCADE"), nullable=False)
+    job_id = Column(Integer, ForeignKey("jobs.id", ondelete="CASCADE"), nullable=False, index=True)
     applicant_ids = Column(JSON, nullable=False)  # Stored as list of integer applicant IDs
     subject_template = Column(String, nullable=False)
     body_template = Column(String, nullable=False)

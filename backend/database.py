@@ -12,8 +12,7 @@ if SQLALCHEMY_DATABASE_URL.startswith("sqlite"):
     print("DATABASE CONNECTION: Using local/ephemeral SQLite database.")
     engine = create_engine(
         SQLALCHEMY_DATABASE_URL,
-        connect_args={"check_same_thread": False},
-        pool_pre_ping=True
+        connect_args={"check_same_thread": False}
     )
 else:
     # Ensure postgres scheme compatibility (SQLAlchemy 2.0 requires postgresql:// instead of postgres://)

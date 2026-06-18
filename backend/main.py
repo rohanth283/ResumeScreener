@@ -15,6 +15,7 @@ from jose import JWTError, jwt
 
 from extractor import extract_text
 from screener import screen_resume
+import anyio
 import models
 import schemas
 import auth
@@ -75,6 +76,16 @@ def run_migrations():
                     "USING (job_id IN (SELECT id FROM jobs))"
                 ))
                 print("MIGRATION SUCCESS: Configured PostgreSQL Row-Level Security (RLS) policies.")
+
+            # 4. Create database indexes for high-frequency queries
+            if "jobs" in table_names:
+                conn.execute(text("CREATE INDEX IF NOT EXISTS idx_jobs_user_id ON jobs(user_id)"))
+            if "applicants" in table_names:
+                conn.execute(text("CREATE INDEX IF NOT EXISTS idx_applicants_job_id ON applicants(job_id)"))
+                conn.execute(text("CREATE INDEX IF NOT EXISTS idx_applicants_email ON applicants(email)"))
+            if "scheduled_emails" in table_names:
+                conn.execute(text("CREATE INDEX IF NOT EXISTS idx_scheduled_emails_job_id ON scheduled_emails(job_id)"))
+            print("MIGRATION SUCCESS: Configured database indexes.")
     except Exception as e:
         print(f"MIGRATION ERROR: Failed to run database initialization or migrations: {e}")
 
@@ -441,12 +452,12 @@ async def screen_applicant_resume(
         )
 
     try:
-        # Extract text from file
+        # Extract text from file in a thread pool to prevent blocking the event loop
         file_bytes = await resume_file.read()
-        resume_text = extract_text(resume_file.filename, file_bytes)
+        resume_text = await anyio.to_thread.run_sync(extract_text, resume_file.filename, file_bytes)
         
-        # Trigger Google Gemini AI matching with priority skills weighting
-        screening_res = screen_resume(job.description, resume_text, job.priority_skills or "")
+        # Trigger Google Gemini AI matching with priority skills weighting asynchronously
+        screening_res = await screen_resume(job.description, resume_text, job.priority_skills or "")
         
         # Use extracted email if not passed explicitly in form
         candidate_email = email.strip() if (email and email.strip()) else screening_res.get("candidate_email", "unknown@example.com")
@@ -551,12 +562,12 @@ async def rescreen_applicant_resume(
         )
 
     try:
-        # Extract text from file
+        # Extract text from file in a thread pool to prevent blocking the event loop
         file_bytes = await resume_file.read()
-        resume_text = extract_text(resume_file.filename, file_bytes)
+        resume_text = await anyio.to_thread.run_sync(extract_text, resume_file.filename, file_bytes)
         
-        # Trigger Google Gemini AI matching with priority skills weighting
-        screening_res = screen_resume(job.description, resume_text, job.priority_skills or "")
+        # Trigger Google Gemini AI matching with priority skills weighting asynchronously
+        screening_res = await screen_resume(job.description, resume_text, job.priority_skills or "")
         
         # Update existing candidate record
         applicant.name = screening_res.get("candidate_name", "Unknown Candidate")

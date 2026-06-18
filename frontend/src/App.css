@@ -272,6 +272,15 @@
   border-bottom: 1px solid var(--border);
 }
 
+.applicants-table th.sortable-header {
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.applicants-table th.sortable-header:hover {
+  background-color: var(--surface-hover);
+  color: var(--text);
+}
+
 .applicants-table td {
   padding: 16px;
   font-size: 14px;

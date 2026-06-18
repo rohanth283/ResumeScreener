@@ -41,16 +41,18 @@ def setup_db():
 @pytest.fixture(autouse=True)
 def mock_screen_resume():
     original_screen_resume = main.screen_resume
-    main.screen_resume = lambda jd, text, priority_skills="": {
-        "candidate_name": "John Doe",
-        "candidate_email": "john.doe@example.com",
-        "match_score": 85 if not priority_skills else 95,
-        "summary": ["Mocked bullet point 1.", "Mocked bullet point 2.", "Mocked bullet point 3."],
-        "strengths": ["Skill A", "Skill B", "Skill C"],
-        "improvements": ["Learn Skill D", "Learn Skill E", "Learn Skill F"],
-        "skills_matched": ["FastAPI", "React"],
-        "skills_missing": ["Python"]
-    }
+    async def mock_fn(jd, text, priority_skills=""):
+        return {
+            "candidate_name": "John Doe",
+            "candidate_email": "john.doe@example.com",
+            "match_score": 85 if not priority_skills else 95,
+            "summary": ["Mocked bullet point 1.", "Mocked bullet point 2.", "Mocked bullet point 3."],
+            "strengths": ["Skill A", "Skill B", "Skill C"],
+            "improvements": ["Learn Skill D", "Learn Skill E", "Learn Skill F"],
+            "skills_matched": ["FastAPI", "React"],
+            "skills_missing": ["Python"]
+        }
+    main.screen_resume = mock_fn
     yield
     main.screen_resume = original_screen_resume
 
@@ -344,12 +346,14 @@ def test_screen_duplicate_applicants():
     # We will override mock_screen_resume default email to unknown@example.com
     import main
     original_screen = main.screen_resume
-    main.screen_resume = lambda jd, text, priority_skills="": {
-        "candidate_name": "No Email Candidate",
-        "candidate_email": "unknown@example.com",
-        "match_score": 50,
-        "summary": [], "strengths": [], "improvements": [], "skills_matched": [], "skills_missing": []
-    }
+    async def mock_unknown_email_fn(jd, text, priority_skills=""):
+        return {
+            "candidate_name": "No Email Candidate",
+            "candidate_email": "unknown@example.com",
+            "match_score": 50,
+            "summary": [], "strengths": [], "improvements": [], "skills_matched": [], "skills_missing": []
+        }
+    main.screen_resume = mock_unknown_email_fn
 
     try:
         response = client.post(

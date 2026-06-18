@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Login from './components/Login';
 import JobList from './components/JobList';
 import NewJobModal from './components/NewJobModal';
@@ -35,6 +35,31 @@ function App() {
   const [applicants, setApplicants] = useState([]);
   const [activeApplicant, setActiveApplicant] = useState(null);
   const [selectedApplicantIds, setSelectedApplicantIds] = useState([]);
+
+  // Sorting states
+  const [sortBy, setSortBy] = useState('score'); // 'score', 'name', 'date'
+  const [sortOrder, setSortOrder] = useState('desc'); // 'asc', 'desc'
+
+  // Sort applicants dynamically
+  const sortedApplicants = useMemo(() => {
+    return [...applicants].sort((a, b) => {
+      let valA, valB;
+      if (sortBy === 'name') {
+        valA = (a.name || '').toLowerCase();
+        valB = (b.name || '').toLowerCase();
+      } else if (sortBy === 'date') {
+        valA = new Date(a.created_at || 0).getTime();
+        valB = new Date(b.created_at || 0).getTime();
+      } else { // default 'score'
+        valA = a.match_score || 0;
+        valB = b.match_score || 0;
+      }
+
+      if (valA < valB) return sortOrder === 'asc' ? -1 : 1;
+      if (valA > valB) return sortOrder === 'asc' ? 1 : -1;
+      return 0;
+    });
+  }, [applicants, sortBy, sortOrder]);
 
   // Modals & Drawer State
   const [isNewJobModalOpen, setIsNewJobModalOpen] = useState(false);
@@ -215,6 +240,19 @@ function App() {
     }
   };
 
+  const handleSort = (field) => {
+    if (sortBy === field) {
+      setSortOrder((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortBy(field);
+      setSortOrder(field === 'name' ? 'asc' : 'desc');
+    }
+  };
+
+  const handleDeselectAllApplicants = () => {
+    setSelectedApplicantIds([]);
+  };
+
   const handleCreateJob = async (jobData) => {
     setLoading(true);
     setError(null);
@@ -313,16 +351,14 @@ function App() {
     }));
     setUploadProgress({ files: progressFiles });
 
-    let currentApplicants = [...applicants];
-    let newApplicantsAdded = 0;
+    const initialCount = applicants.length;
 
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
-
+    // Helper task to process a single file upload concurrently
+    const processFile = async (file, index) => {
       // Update this file status to loading
       setUploadProgress((prev) => {
         const updated = [...prev.files];
-        updated[i] = { ...updated[i], status: 'loading' };
+        updated[index] = { ...updated[index], status: 'loading' };
         return { files: updated };
       });
 
@@ -356,22 +392,22 @@ function App() {
           throw new Error('Received non-JSON response from server.');
         }
 
-        // Check if candidate email is already in the list (excluding placeholder emails)
-        const isDuplicate = data.email && data.email.toLowerCase() !== "unknown@example.com"
-          ? currentApplicants.some((a) => a.email && a.email.toLowerCase() === data.email.toLowerCase())
-          : false;
+        // Functional state update for applicants to avoid stale closures during concurrent requests
+        setApplicants((prevApplicants) => {
+          const isDuplicate = data.email && data.email.toLowerCase() !== "unknown@example.com"
+            ? prevApplicants.some((a) => a.email && a.email.toLowerCase() === data.email.toLowerCase())
+            : false;
 
-        if (isDuplicate) {
-          currentApplicants = currentApplicants.map((a) =>
-            a.email && a.email.toLowerCase() === data.email.toLowerCase() ? data : a
-          );
-        } else {
-          currentApplicants.push(data);
-          newApplicantsAdded += 1;
-        }
-
-        // Update the applicants state using the updated local list sorted by match score
-        setApplicants([...currentApplicants].sort((a, b) => b.match_score - a.match_score));
+          let updated;
+          if (isDuplicate) {
+            updated = prevApplicants.map((a) =>
+              a.email && a.email.toLowerCase() === data.email.toLowerCase() ? data : a
+            );
+          } else {
+            updated = [...prevApplicants, data];
+          }
+          return [...updated].sort((a, b) => b.match_score - a.match_score);
+        });
 
         // Update activeApplicant if they are the current drawer
         setActiveApplicant((prevActive) => {
@@ -384,7 +420,7 @@ function App() {
         // Update this file status to success
         setUploadProgress((prev) => {
           const updated = [...prev.files];
-          updated[i] = { ...updated[i], status: 'success' };
+          updated[index] = { ...updated[index], status: 'success' };
           return { files: updated };
         });
       } catch (err) {
@@ -392,26 +428,28 @@ function App() {
         // Update this file status to error
         setUploadProgress((prev) => {
           const updated = [...prev.files];
-          updated[i] = { ...updated[i], status: 'error', errorMsg: err.message };
+          updated[index] = { ...updated[index], status: 'error', errorMsg: err.message };
           return { files: updated };
         });
       }
+    };
 
-      // Add a small delay between requests to avoid Gemini API Rate Limits (429)
-      if (i < files.length - 1) {
-        await new Promise((resolve) => setTimeout(resolve, 2500));
+    // Dispatch all requests concurrently
+    await Promise.all(files.map((file, index) => processFile(file, index)));
+
+    // Safely compute new applicants count and update the job counter using a functional updater
+    setApplicants((currentApplicants) => {
+      const addedCount = currentApplicants.length - initialCount;
+      if (addedCount > 0) {
+        setJobs((prev) => prev.map((j) => {
+          if (j.id === activeJob.id) {
+            return { ...j, applicant_count: (j.applicant_count || 0) + addedCount };
+          }
+          return j;
+        }));
       }
-    }
-
-    // Update local job applicant count once done
-    if (newApplicantsAdded > 0) {
-      setJobs((prev) => prev.map((j) => {
-        if (j.id === activeJob.id) {
-          return { ...j, applicant_count: (j.applicant_count || 0) + newApplicantsAdded };
-        }
-        return j;
-      }));
-    }
+      return currentApplicants;
+    });
 
     setLoading(false);
   };
@@ -740,14 +778,24 @@ function App() {
               <div className="applicants-section-header">
                 <h4>Screened Candidates</h4>
                 {selectedApplicantIds.length > 0 && (
-                  <button
-                    type="button"
-                    className="btn-primary email-selected-btn"
-                    onClick={() => setIsEmailDrawerOpen(true)}
-                    style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
-                  >
-                    📧 Email Selected ({selectedApplicantIds.length})
-                  </button>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <button
+                      type="button"
+                      className="btn-primary email-selected-btn"
+                      onClick={() => setIsEmailDrawerOpen(true)}
+                      style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+                    >
+                      📧 Email Selected ({selectedApplicantIds.length})
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-secondary deselect-all-btn"
+                      onClick={handleDeselectAllApplicants}
+                      style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+                    >
+                      ✕ Deselect All
+                    </button>
+                  </div>
                 )}
               </div>
               {error && (
@@ -784,14 +832,20 @@ function App() {
                             onChange={handleToggleSelectAllApplicants}
                           />
                         </th>
-                        <th>Candidate</th>
-                        <th>Score</th>
+                        <th onClick={() => handleSort('name')} style={{ cursor: 'pointer', userSelect: 'none' }} className="sortable-header">
+                          Candidate {sortBy === 'name' && (sortOrder === 'asc' ? ' ▲' : ' ▼')}
+                        </th>
+                        <th onClick={() => handleSort('score')} style={{ cursor: 'pointer', userSelect: 'none' }} className="sortable-header">
+                          Score {sortBy === 'score' && (sortOrder === 'asc' ? ' ▲' : ' ▼')}
+                        </th>
                         <th>Filename</th>
-                        <th>Date Screened</th>
+                        <th onClick={() => handleSort('date')} style={{ cursor: 'pointer', userSelect: 'none' }} className="sortable-header">
+                          Date Screened {sortBy === 'date' && (sortOrder === 'asc' ? ' ▲' : ' ▼')}
+                        </th>
                       </tr>
                     </thead>
                     <tbody>
-                      {applicants.map((app) => {
+                      {sortedApplicants.map((app) => {
                         const scoreClass = app.match_score >= 80 ? 'excellent' : app.match_score >= 60 ? 'good' : 'poor';
                         return (
                           <tr
