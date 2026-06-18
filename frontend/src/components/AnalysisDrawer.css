@@ -101,21 +101,27 @@
   color: var(--text);
   border: 4px solid var(--accent);
   box-sizing: border-box;
+  flex-shrink: 0; /* Prevents squishing and wonkiness in flex container */
+  background: var(--surface);
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.05); /* Soft inner shadow for depth */
 }
 
 .score-circle.excellent {
   border-color: var(--success);
   color: var(--success);
+  background: var(--success-light);
 }
 
 .score-circle.good {
   border-color: var(--warning);
   color: #B06000;
+  background: var(--warning-light);
 }
 
 .score-circle.poor {
   border-color: var(--danger);
   color: var(--danger);
+  background: var(--danger-light);
 }
 
 .candidate-meta h4 {
