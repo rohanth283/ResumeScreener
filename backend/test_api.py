@@ -58,6 +58,16 @@ def mock_screen_resume():
 
 
 @pytest.fixture(autouse=True)
+def mock_extract_text():
+    original_extract_text = main.extract_text
+    def mock_fn(filename, file_bytes):
+        return "Mocked extracted text from PDF/TXT resume."
+    main.extract_text = mock_fn
+    yield
+    main.extract_text = original_extract_text
+
+
+@pytest.fixture(autouse=True)
 def mock_send_email(monkeypatch):
     def mock_send(email, token):
         from auth import _log_email_locally
@@ -743,6 +753,41 @@ def test_email_history_and_cancellation():
     emails_after = res_list_after.json()
     assert len(emails_after) == 1
     assert emails_after[0]["id"] == immediate_email_id
+
+
+def test_resume_binary_streaming():
+    # 1. Signup recruiter and create job
+    signup_data = {"email": "recruiter_resume_test@example.com", "password": "password123", "name": "Resume Tester"}
+    res = client.post("/auth/signup", json=signup_data)
+    assert res.status_code == 200
+    token = res.json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    job_payload = {"title": "PDF Developer", "description": "Needs PDF experience"}
+    res = client.post("/jobs", json=job_payload, headers=headers)
+    assert res.status_code == 200
+    job_id = res.json()["id"]
+
+    # 2. Screen PDF candidate (passes fake PDF bytes)
+    pdf_content = b"%PDF-1.4 Mock PDF content bytes"
+    resume = ("sample_resume.pdf", pdf_content, "application/pdf")
+    res = client.post(f"/jobs/{job_id}/screen", files={"resume_file": resume}, headers=headers)
+    assert res.status_code == 200
+    app_data = res.json()
+    assert app_data["has_resume_pdf"] is True
+    applicant_id = app_data["id"]
+
+    # 3. Retrieve PDF using Query Parameter token
+    res_pdf = client.get(f"/jobs/{job_id}/applicants/{applicant_id}/resume?token={token}")
+    assert res_pdf.status_code == 200
+    assert res_pdf.content == pdf_content
+    assert res_pdf.headers["content-type"] == "application/pdf"
+
+    # 4. Retrieve PDF using Authorization header
+    res_pdf_header = client.get(f"/jobs/{job_id}/applicants/{applicant_id}/resume", headers=headers)
+    assert res_pdf_header.status_code == 200
+    assert res_pdf_header.content == pdf_content
+
 
 
 
