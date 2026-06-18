@@ -119,8 +119,12 @@ function App() {
     }
   };
 
-  const fetchApplicants = async (jobId) => {
-    setApplicantsLoading(true);
+  const fetchApplicants = async (jobId, initialCount = 1) => {
+    if (initialCount > 0) {
+      setApplicantsLoading(true);
+    } else {
+      setApplicantsLoading(false);
+    }
     try {
       const response = await fetch(`${API_URL}/jobs/${jobId}/applicants`, {
         headers: { 'Authorization': `Bearer ${token}` }
@@ -223,7 +227,7 @@ function App() {
     setSelectedApplicantIds([]);
     setActiveTab('candidates');
     setExpandedEmailJobIds([]);
-    fetchApplicants(job.id);
+    fetchApplicants(job.id, job.applicant_count || 0);
   };
 
   const handleToggleSelectApplicant = (id) => {
