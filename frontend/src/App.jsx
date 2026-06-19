@@ -30,6 +30,15 @@ function App() {
     return saved ? JSON.parse(saved) : null;
   });
 
+  const [theme, setTheme] = useState(() => {
+    return localStorage.getItem('app_theme') || 'light';
+  });
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('app_theme', theme);
+  }, [theme]);
+
   const [jobs, setJobs] = useState([]);
   const [activeJob, setActiveJob] = useState(null);
   const [applicants, setApplicants] = useState([]);
@@ -720,11 +729,31 @@ function App() {
 
   // Render Login screen if not authenticated
   if (!token || !user) {
-    return <Login apiBaseUrl={API_URL} onAuthSuccess={handleAuthSuccess} />;
+    return (
+      <>
+        <button 
+          type="button" 
+          className="theme-toggle-btn"
+          onClick={() => setTheme(prev => prev === 'light' ? 'dark' : 'light')}
+          title={theme === 'light' ? 'Switch to Dark Mode' : 'Switch to Light Mode'}
+        >
+          {theme === 'light' ? '🌙' : '☀️'}
+        </button>
+        <Login apiBaseUrl={API_URL} onAuthSuccess={handleAuthSuccess} />
+      </>
+    );
   }
 
   return (
     <div className="app">
+      <button 
+        type="button" 
+        className="theme-toggle-btn"
+        onClick={() => setTheme(prev => prev === 'light' ? 'dark' : 'light')}
+        title={theme === 'light' ? 'Switch to Dark Mode' : 'Switch to Light Mode'}
+      >
+        {theme === 'light' ? '🌙' : '☀️'}
+      </button>
       <nav className="nav-bar">
         <div className="user-badge">
           <span className="user-name">{user.name || user.email}</span>

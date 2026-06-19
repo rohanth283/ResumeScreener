@@ -47,3 +47,53 @@ body {
 #root {
   min-height: 100vh;
 }
+
+[data-theme='dark'] {
+  --bg: #121212;
+  --surface: #1E1F20;
+  --surface-hover: #2D2E30;
+  --surface-elevated: #2A2B2D;
+  --border: #3C4043;
+  --text: #E8EAED;
+  --text-muted: #9AA0A6;
+  --accent: #8AB4F8;
+  --accent-hover: #AECBFA;
+  --accent-light: rgba(138, 180, 248, 0.15);
+  
+  --success: #81C995;
+  --success-light: rgba(129, 201, 149, 0.15);
+  --warning: #FDD663;
+  --warning-light: rgba(253, 214, 99, 0.15);
+  --danger: #F28B82;
+  --danger-light: rgba(242, 139, 130, 0.15);
+
+  --shadow-sm: 0 1px 2px 0 rgba(0,0,0,0.5), 0 1px 3px 1px rgba(0,0,0,0.3);
+  --shadow-md: 0 1px 3px 0 rgba(0,0,0,0.5), 0 4px 8px 3px rgba(0,0,0,0.3);
+}
+
+.theme-toggle-btn {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 999;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 18px;
+  box-shadow: var(--shadow-sm);
+  transition: all 0.2s ease;
+  outline: none;
+}
+
+.theme-toggle-btn:hover {
+  background: var(--surface-hover);
+  transform: scale(1.05);
+}
+
