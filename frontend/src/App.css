@@ -746,3 +746,34 @@
   border: 1px dashed var(--border);
   border-radius: 8px;
 }
+
+/* List Flag Button Styling */
+.list-flag-btn {
+  background: transparent;
+  border: none;
+  font-size: 20px;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 50%;
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  transition: all 0.2s ease;
+  color: var(--text-muted);
+  opacity: 0.35;
+  outline: none;
+  line-height: 1;
+  vertical-align: middle;
+}
+
+.list-flag-btn:hover {
+  background: var(--surface-hover);
+  color: var(--warning);
+  opacity: 0.8;
+}
+
+.list-flag-btn.flagged {
+  color: var(--warning);
+  opacity: 1;
+}
+

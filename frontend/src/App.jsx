@@ -931,6 +931,9 @@ function App() {
                             onChange={handleToggleSelectAllApplicants}
                           />
                         </th>
+                        <th style={{ width: '45px', textAlign: 'center' }}>
+                          ⚑
+                        </th>
                         <th onClick={() => handleSort('name')} style={{ cursor: 'pointer', userSelect: 'none' }} className="sortable-header">
                           Candidate {sortBy === 'name' && (sortOrder === 'asc' ? ' ▲' : ' ▼')}
                         </th>
@@ -958,6 +961,16 @@ function App() {
                                 checked={selectedApplicantIds.includes(app.id)}
                                 onChange={() => handleToggleSelectApplicant(app.id)}
                               />
+                            </td>
+                            <td onClick={(e) => e.stopPropagation()} style={{ textAlign: 'center' }}>
+                              <button
+                                type="button"
+                                className={`list-flag-btn ${app.is_reviewed ? 'flagged' : ''}`}
+                                onClick={() => handleToggleReview(app)}
+                                title={app.is_reviewed ? "Marked as Reviewed" : "Mark as Reviewed"}
+                              >
+                                ⚑
+                              </button>
                             </td>
                             <td>
                               <div className="candidate-name-cell">
