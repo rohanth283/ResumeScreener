@@ -4,6 +4,7 @@ import './AnalysisDrawer.css';
 export default function AnalysisDrawer({ isOpen, onClose, applicant, onRescreen, onToggleReview, onDelete, token, apiUrl, jobId }) {
   const [shouldRender, setShouldRender] = useState(isOpen);
   const [activeTab, setActiveTab] = useState('report');
+  const [iframeLoading, setIframeLoading] = useState(true);
 
   useEffect(() => {
     if (isOpen) {
@@ -15,6 +16,10 @@ export default function AnalysisDrawer({ isOpen, onClose, applicant, onRescreen,
       return () => clearTimeout(timer);
     }
   }, [isOpen, applicant]);
+
+  useEffect(() => {
+    setIframeLoading(true);
+  }, [activeTab, applicant]);
 
   if (!shouldRender || !applicant) return null;
 
@@ -201,18 +206,28 @@ export default function AnalysisDrawer({ isOpen, onClose, applicant, onRescreen,
                 </button>
               </div>
               {applicant.has_resume_pdf ? (
-                <iframe
-                  src={`${apiUrl}/jobs/${jobId}/applicants/${applicant.id}/resume?token=${token}`}
-                  title={`Resume PDF - ${applicant.name}`}
-                  style={{
-                    width: '100%',
-                    height: '600px',
-                    border: '1px solid var(--border)',
-                    borderRadius: 'var(--radius)',
-                    marginTop: '12px',
-                    backgroundColor: '#ffffff'
-                  }}
-                />
+                <div style={{ position: 'relative', width: '100%', height: '600px', marginTop: '12px' }}>
+                  {iframeLoading && (
+                    <div className="iframe-loader-container">
+                      <span className="loading-spinner" />
+                      <p>Loading resume PDF...</p>
+                    </div>
+                  )}
+                  <iframe
+                    src={`${apiUrl}/jobs/${jobId}/applicants/${applicant.id}/resume?token=${token}`}
+                    title={`Resume PDF - ${applicant.name}`}
+                    onLoad={() => setIframeLoading(false)}
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      border: '1px solid var(--border)',
+                      borderRadius: 'var(--radius)',
+                      backgroundColor: '#ffffff',
+                      opacity: iframeLoading ? 0 : 1,
+                      transition: 'opacity 0.2s ease-in-out'
+                    }}
+                  />
+                </div>
               ) : (
                 <pre className="resume-text-content">
                   {applicant.resume_text}
