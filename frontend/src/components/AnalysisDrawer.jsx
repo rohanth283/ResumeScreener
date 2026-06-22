@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import './AnalysisDrawer.css';
 
-export default function AnalysisDrawer({ isOpen, onClose, applicant, onRescreen, onToggleReview, onDelete, token, apiUrl, jobId }) {
+export default function AnalysisDrawer({ isOpen, onClose, applicant, onRescreen, onToggleReview, onDelete, token, apiUrl, jobId, isJobClosed, hiredApplicantId, onHire }) {
   const [shouldRender, setShouldRender] = useState(isOpen);
   const [activeTab, setActiveTab] = useState('report');
   const [iframeLoading, setIframeLoading] = useState(true);
@@ -58,7 +58,12 @@ export default function AnalysisDrawer({ isOpen, onClose, applicant, onRescreen,
             </div>
             <div className="candidate-meta" style={{ flex: 1 }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', gap: '12px' }}>
-                <h4 style={{ margin: 0 }}>{applicant.name || 'Unknown Candidate'}</h4>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                  <h4 style={{ margin: 0 }}>{applicant.name || 'Unknown Candidate'}</h4>
+                  {isJobClosed && hiredApplicantId === applicant.id && (
+                    <span className="hired-badge-pill">🏆 Hired</span>
+                  )}
+                </div>
                 <button
                   type="button"
                   className={`drawer-flag-btn ${applicant.is_reviewed ? 'flagged' : ''}`}
@@ -73,6 +78,15 @@ export default function AnalysisDrawer({ isOpen, onClose, applicant, onRescreen,
               <div className="meta-filename-row">
                 <span className="meta-filename">📄 {applicant.resume_filename}</span>
                 <div className="meta-actions">
+                  {!isJobClosed && (
+                    <button
+                      type="button"
+                      className="hire-candidate-btn"
+                      onClick={() => onHire(applicant)}
+                    >
+                      Hire Candidate
+                    </button>
+                  )}
                   <button
                     type="button"
                     className="update-resume-btn"

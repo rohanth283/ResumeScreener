@@ -1,13 +1,15 @@
 import { useState } from 'react';
 import './NewJobModal.css';
 
-export default function NewJobModal({ onClose, onSubmit, loading, job = null }) {
+export default function NewJobModal({ onClose, onSubmit, loading, job = null, applicants = [] }) {
   const [title, setTitle] = useState(job ? job.title : '');
   const [department, setDepartment] = useState(job ? (job.department || '') : '');
   const [location, setLocation] = useState(job ? (job.location || '') : '');
   const [employmentType, setEmploymentType] = useState(job ? (job.employment_type || 'Full-time') : 'Full-time');
   const [description, setDescription] = useState(job ? job.description : '');
   const [prioritySkills, setPrioritySkills] = useState(job ? (job.priority_skills || '') : '');
+  const [status, setStatus] = useState(job ? (job.status || 'active') : 'active');
+  const [hiredApplicantId, setHiredApplicantId] = useState(job ? (job.hired_applicant_id || '') : '');
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -20,10 +22,12 @@ export default function NewJobModal({ onClose, onSubmit, loading, job = null }) 
       employment_type: employmentType,
       description: description.trim(),
       priority_skills: prioritySkills.trim() || null,
+      status: status,
+      hired_applicant_id: status === 'closed' && hiredApplicantId ? parseInt(hiredApplicantId, 10) : null,
     });
   };
 
-  const isFormValid = title.trim() && description.trim();
+  const isFormValid = title.trim() && description.trim() && (status !== 'closed' || hiredApplicantId !== '');
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -84,6 +88,46 @@ export default function NewJobModal({ onClose, onSubmit, loading, job = null }) 
                 <option value="Internship">Internship</option>
               </select>
             </div>
+
+            {job && (
+              <div className="form-field form-field-full">
+                <label htmlFor="job-status">Job Status</label>
+                <select
+                  id="job-status"
+                  value={status}
+                  onChange={(e) => {
+                    setStatus(e.target.value);
+                    if (e.target.value === 'active') {
+                      setHiredApplicantId('');
+                    }
+                  }}
+                  disabled={loading}
+                >
+                  <option value="active">Active</option>
+                  <option value="closed">Closed</option>
+                </select>
+              </div>
+            )}
+
+            {job && status === 'closed' && (
+              <div className="form-field form-field-full">
+                <label htmlFor="hired-candidate">Hired Candidate</label>
+                <select
+                  id="hired-candidate"
+                  value={hiredApplicantId}
+                  onChange={(e) => setHiredApplicantId(e.target.value)}
+                  disabled={loading}
+                  required
+                >
+                  <option value="">-- Select Candidate --</option>
+                  {applicants.map((app) => (
+                    <option key={app.id} value={app.id}>
+                      {app.name || app.email} (Score: {app.match_score}%)
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
 
             <div className="form-field form-field-full">
               <label htmlFor="priority-skills">Priority Skills (comma-separated)</label>
