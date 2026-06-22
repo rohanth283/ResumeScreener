@@ -789,65 +789,6 @@ def test_resume_binary_streaming():
     assert res_pdf_header.content == pdf_content
 
 
-def test_job_status_and_hiring():
-    # 1. Signup recruiter and create job
-    signup_data = {"email": "hiring_recruiter@example.com", "password": "password123", "name": "Hiring Recruiter"}
-    res = client.post("/auth/signup", json=signup_data)
-    assert res.status_code == 200
-    token = res.json()["access_token"]
-    headers = {"Authorization": f"Bearer {token}"}
-
-    job_payload = {
-        "title": "React Engineer", 
-        "description": "Needs React experience",
-        "department": "Engineering",
-        "location": "Remote",
-        "employment_type": "Full-time"
-    }
-    res = client.post("/jobs", json=job_payload, headers=headers)
-    assert res.status_code == 200
-    job_data = res.json()
-    assert job_data["status"] == "active"
-    assert job_data["hired_applicant_id"] is None
-    assert job_data["hired_applicant_name"] is None
-    job_id = job_data["id"]
-
-    # 2. Screen candidate
-    pdf_content = b"%PDF-1.4 Mock PDF content bytes"
-    resume = ("hired_resume.pdf", pdf_content, "application/pdf")
-    res = client.post(f"/jobs/{job_id}/screen", files={"resume_file": resume}, headers=headers)
-    assert res.status_code == 200
-    app_data = res.json()
-    applicant_id = app_data["id"]
-
-    # 3. Update job opening to closed and set hired applicant
-    update_payload = {
-        "title": "React Engineer",
-        "description": "Needs React experience",
-        "department": "Engineering",
-        "location": "Remote",
-        "employment_type": "Full-time",
-        "status": "closed",
-        "hired_applicant_id": applicant_id
-    }
-    res = client.put(f"/jobs/{job_id}", json=update_payload, headers=headers)
-    assert res.status_code == 200
-    updated_job = res.json()
-    assert updated_job["status"] == "closed"
-    assert updated_job["hired_applicant_id"] == applicant_id
-    assert updated_job["hired_applicant_name"] is not None
-
-    # 4. Fetch jobs list and verify status and hired applicant name are returned
-    res = client.get("/jobs", headers=headers)
-    assert res.status_code == 200
-    jobs_list = res.json()
-    target_job = [j for j in jobs_list if j["id"] == job_id][0]
-    assert target_job["status"] == "closed"
-    assert target_job["hired_applicant_id"] == applicant_id
-    assert target_job["hired_applicant_name"] == updated_job["hired_applicant_name"]
-
-
-
 
 
 

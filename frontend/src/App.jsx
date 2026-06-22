@@ -621,54 +621,6 @@ function App() {
     }
   };
 
-  const handleHireApplicant = async (applicant) => {
-    if (!activeJob) return;
-    if (!window.confirm(`Hiring ${applicant.name || 'this candidate'} will mark this job position as closed. Do you want to proceed?`)) {
-      return;
-    }
-    
-    setLoading(true);
-    setError(null);
-    try {
-      const updatedJobData = {
-        title: activeJob.title,
-        department: activeJob.department,
-        location: activeJob.location,
-        employment_type: activeJob.employment_type,
-        description: activeJob.description,
-        priority_skills: activeJob.priority_skills,
-        status: 'closed',
-        hired_applicant_id: applicant.id,
-      };
-
-      const response = await fetch(`${API_URL}/jobs/${activeJob.id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(updatedJobData),
-      });
-
-      if (response.status === 401) {
-        handleLogout();
-        return;
-      }
-
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.detail || 'Could not hire applicant.');
-
-      // Update jobs list and activeJob state
-      setJobs((prev) => prev.map((j) => (j.id === activeJob.id ? data : j)));
-      setActiveJob(data);
-    } catch (err) {
-      setError(err.message);
-      alert(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleResetPasswordSubmit = async (e) => {
     e.preventDefault();
     setResetError(null);
@@ -869,14 +821,11 @@ function App() {
               </button>
               <button
                 type="button"
-                className={`btn-primary ${activeJob.status === 'closed' ? 'disabled' : ''}`}
+                className="btn-primary"
                 onClick={() => {
-                  if (activeJob.status === 'closed') return;
                   setRescreenApplicant(null);
                   setIsUploadModalOpen(true);
                 }}
-                disabled={activeJob.status === 'closed'}
-                title={activeJob.status === 'closed' ? "This position is closed" : "Screen a new candidate resume"}
               >
                 Screen Candidate
               </button>
@@ -922,19 +871,6 @@ function App() {
 
           {activeTab === 'candidates' ? (
             <div className="applicants-section">
-              {activeJob.status === 'closed' && (
-                <div className="closed-opening-banner">
-                  <span className="banner-icon">🏆</span>
-                  <div className="banner-content">
-                    <h5>This Job Opening is Closed</h5>
-                    <p>
-                      Candidate <strong>{activeJob.hired_applicant_name || 'Selected Candidate'}</strong> has been hired for this position.
-                      Below are all previous applicants and their screening reports.
-                    </p>
-                  </div>
-                </div>
-              )}
-
               <div className="applicants-section-header">
                 <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
                   <h4 style={{ margin: 0 }}>Screened Candidates</h4>
@@ -1006,12 +942,8 @@ function App() {
                   <p>No candidates have been screened for this position yet.</p>
                   <button
                     type="button"
-                    className={`btn-primary ${activeJob.status === 'closed' ? 'disabled' : ''}`}
-                    onClick={() => {
-                      if (activeJob.status === 'closed') return;
-                      setIsUploadModalOpen(true);
-                    }}
-                    disabled={activeJob.status === 'closed'}
+                    className="btn-primary"
+                    onClick={() => setIsUploadModalOpen(true)}
                   >
                     Screen First Candidate
                   </button>
@@ -1237,7 +1169,6 @@ function App() {
           onSubmit={editingJob ? (jobData) => handleEditJob(editingJob.id, jobData) : handleCreateJob}
           loading={loading}
           job={editingJob}
-          applicants={applicants}
         />
       )}
 
@@ -1265,9 +1196,6 @@ function App() {
         token={token}
         apiUrl={API_URL}
         jobId={activeJob ? activeJob.id : null}
-        isJobClosed={activeJob?.status === 'closed'}
-        hiredApplicantId={activeJob?.hired_applicant_id}
-        onHire={handleHireApplicant}
       />
 
       <EmailTemplateDrawer

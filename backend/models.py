@@ -2,7 +2,6 @@ from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, JSON, Bool
 from sqlalchemy.orm import relationship, deferred
 from datetime import datetime
 from database import Base
-from typing import Optional
 
 class User(Base):
     __tablename__ = "users"
@@ -28,8 +27,6 @@ class Job(Base):
     employment_type = Column(String, nullable=True)  # Full-time, Part-time, Contract, etc.
     description = Column(String, nullable=False)
     priority_skills = Column(String, nullable=True)  # Comma-separated list of priority skills
-    status = Column(String, default="active", nullable=False)  # active or closed
-    hired_applicant_id = Column(Integer, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     # Relationship to user
@@ -37,14 +34,6 @@ class Job(Base):
 
     # Relationship to applicants with cascade delete
     applicants = relationship("Applicant", back_populates="job", cascade="all, delete-orphan")
-
-    @property
-    def hired_applicant_name(self) -> Optional[str]:
-        if self.hired_applicant_id:
-            for app in self.applicants:
-                if app.id == self.hired_applicant_id:
-                    return app.name
-        return None
 
 class Applicant(Base):
     __tablename__ = "applicants"

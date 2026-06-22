@@ -36,7 +36,7 @@ export default function JobList({ jobs, onSelectJob, onCreateJobClick, isLoading
   return (
     <div className="job-dashboard">
       <div className="dashboard-header">
-        <h2>Job Positions</h2>
+        <h2>Active Positions</h2>
         <button type="button" className="add-job-btn" onClick={onCreateJobClick}>
           Create Job
         </button>
@@ -50,12 +50,7 @@ export default function JobList({ jobs, onSelectJob, onCreateJobClick, isLoading
             onClick={() => onSelectJob(job)}
           >
             <div className="job-card-top">
-              <div className="job-card-title-row">
-                <h3>{job.title}</h3>
-                <span className={`status-badge ${job.status || 'active'}`}>
-                  {job.status === 'closed' ? 'Closed' : 'Active'}
-                </span>
-              </div>
+              <h3>{job.title}</h3>
               <div className="job-badges">
                 {job.department && <span className="badge">{job.department}</span>}
                 {job.location && <span className="badge">{job.location}</span>}
@@ -65,11 +60,6 @@ export default function JobList({ jobs, onSelectJob, onCreateJobClick, isLoading
                   </span>
                 )}
               </div>
-              {job.status === 'closed' && job.hired_applicant_name && (
-                <div className="hired-badge">
-                  🎉 Hired: <strong>{job.hired_applicant_name}</strong>
-                </div>
-              )}
             </div>
             
             <div className="job-card-bottom">

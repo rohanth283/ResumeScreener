@@ -51,12 +51,6 @@ def run_migrations():
                 if "user_id" not in columns:
                     conn.execute(text("ALTER TABLE jobs ADD COLUMN user_id INTEGER REFERENCES users(id) ON DELETE CASCADE"))
                     print("MIGRATION: Added user_id column to jobs table.")
-                if "status" not in columns:
-                    conn.execute(text("ALTER TABLE jobs ADD COLUMN status VARCHAR DEFAULT 'active'"))
-                    print("MIGRATION: Added status column to jobs table.")
-                if "hired_applicant_id" not in columns:
-                    conn.execute(text("ALTER TABLE jobs ADD COLUMN hired_applicant_id INTEGER"))
-                    print("MIGRATION: Added hired_applicant_id column to jobs table.")
 
             if "applicants" in table_names:
                 columns = [c["name"] for c in inspector.get_columns("applicants")]
@@ -343,9 +337,7 @@ def create_job(
         location=job_data.location,
         employment_type=job_data.employment_type,
         description=job_data.description,
-        priority_skills=job_data.priority_skills,
-        status=job_data.status or "active",
-        hired_applicant_id=job_data.hired_applicant_id
+        priority_skills=job_data.priority_skills
     )
     db.add(db_job)
     db.commit()
@@ -381,8 +373,6 @@ def update_job(
     job.employment_type = job_data.employment_type
     job.description = job_data.description
     job.priority_skills = job_data.priority_skills
-    job.status = job_data.status or "active"
-    job.hired_applicant_id = job_data.hired_applicant_id
     
     db.commit()
     db.refresh(job)
