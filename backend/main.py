@@ -15,7 +15,7 @@ from jose import JWTError, jwt
 from typing import Optional
 
 from extractor import extract_text
-from screener import screen_resume
+from screener import screen_resume, get_embedding, cosine_similarity
 import anyio
 import models
 import schemas
@@ -51,6 +51,9 @@ def run_migrations():
                 if "user_id" not in columns:
                     conn.execute(text("ALTER TABLE jobs ADD COLUMN user_id INTEGER REFERENCES users(id) ON DELETE CASCADE"))
                     print("MIGRATION: Added user_id column to jobs table.")
+                if "description_embedding" not in columns:
+                    conn.execute(text("ALTER TABLE jobs ADD COLUMN description_embedding JSON"))
+                    print("MIGRATION: Added description_embedding column to jobs table.")
 
             if "applicants" in table_names:
                 columns = [c["name"] for c in inspector.get_columns("applicants")]
@@ -61,6 +64,9 @@ def run_migrations():
                     col_type = "BLOB" if engine.url.drivername.startswith("sqlite") else "BYTEA"
                     conn.execute(text(f"ALTER TABLE applicants ADD COLUMN resume_pdf_bytes {col_type}"))
                     print(f"MIGRATION: Added resume_pdf_bytes column to applicants table ({col_type}).")
+                if "resume_embedding" not in columns:
+                    conn.execute(text("ALTER TABLE applicants ADD COLUMN resume_embedding JSON"))
+                    print("MIGRATION: Added resume_embedding column to applicants table.")
 
             if "scheduled_emails" in table_names:
                 columns = [c["name"] for c in inspector.get_columns("scheduled_emails")]
@@ -325,7 +331,7 @@ def reset_password(request_data: schemas.ResetPasswordRequest, db: Session = Dep
 
 # Job Management API Endpoints
 @app.post("/jobs", response_model=schemas.JobResponse)
-def create_job(
+async def create_job(
     job_data: schemas.JobCreate,
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db)
@@ -339,6 +345,13 @@ def create_job(
         description=job_data.description,
         priority_skills=job_data.priority_skills
     )
+    # Generate description embedding
+    text_to_embed = f"{db_job.title}\n{db_job.priority_skills or ''}\n{db_job.description}"
+    try:
+        db_job.description_embedding = await get_embedding(text_to_embed)
+    except Exception as e:
+        print(f"Error generating job embedding: {e}")
+        
     db.add(db_job)
     db.commit()
     db.refresh(db_job)
@@ -349,7 +362,7 @@ def create_job(
 
 
 @app.put("/jobs/{job_id}", response_model=schemas.JobResponse)
-def update_job(
+async def update_job(
     job_id: int,
     job_data: schemas.JobCreate,
     current_user: models.User = Depends(get_current_user),
@@ -373,6 +386,13 @@ def update_job(
     job.employment_type = job_data.employment_type
     job.description = job_data.description
     job.priority_skills = job_data.priority_skills
+    
+    # Generate/Update description embedding
+    text_to_embed = f"{job.title}\n{job.priority_skills or ''}\n{job.description}"
+    try:
+        job.description_embedding = await get_embedding(text_to_embed)
+    except Exception as e:
+        print(f"Error updating job embedding: {e}")
     
     db.commit()
     db.refresh(job)
@@ -482,6 +502,13 @@ async def screen_applicant_resume(
         # Trigger Google Gemini AI matching with priority skills weighting asynchronously
         screening_res = await screen_resume(job.description, resume_text, job.priority_skills or "")
         
+        # Generate resume embedding
+        resume_emb = None
+        try:
+            resume_emb = await get_embedding(resume_text)
+        except Exception as e:
+            print(f"Error generating resume embedding: {e}")
+            
         # Use extracted email if not passed explicitly in form
         candidate_email = email.strip() if (email and email.strip()) else screening_res.get("candidate_email", "unknown@example.com")
 
@@ -505,6 +532,7 @@ async def screen_applicant_resume(
             existing_applicant.improvements = screening_res["improvements"]
             existing_applicant.skills_matched = screening_res["skills_matched"]
             existing_applicant.skills_missing = screening_res["skills_missing"]
+            existing_applicant.resume_embedding = resume_emb
             existing_applicant.created_at = func.now() # update timestamp to show latest screening date
             
             db.commit()
@@ -524,7 +552,8 @@ async def screen_applicant_resume(
                 strengths=screening_res["strengths"],
                 improvements=screening_res["improvements"],
                 skills_matched=screening_res["skills_matched"],
-                skills_missing=screening_res["skills_missing"]
+                skills_missing=screening_res["skills_missing"],
+                resume_embedding=resume_emb
             )
             db.add(applicant)
             db.commit()
@@ -594,6 +623,13 @@ async def rescreen_applicant_resume(
         # Trigger Google Gemini AI matching with priority skills weighting asynchronously
         screening_res = await screen_resume(job.description, resume_text, job.priority_skills or "")
         
+        # Generate resume embedding
+        resume_emb = None
+        try:
+            resume_emb = await get_embedding(resume_text)
+        except Exception as e:
+            print(f"Error generating resume embedding during rescreen: {e}")
+            
         # Update existing candidate record
         applicant.name = screening_res.get("candidate_name", "Unknown Candidate")
         applicant.resume_filename = resume_file.filename
@@ -605,6 +641,7 @@ async def rescreen_applicant_resume(
         applicant.improvements = screening_res["improvements"]
         applicant.skills_matched = screening_res["skills_matched"]
         applicant.skills_missing = screening_res["skills_missing"]
+        applicant.resume_embedding = resume_emb
         
         db.commit()
         db.refresh(applicant)
@@ -1068,6 +1105,170 @@ def delete_scheduled_email(
     db.delete(email_job)
     db.commit()
     return {"message": "Scheduled email cancelled successfully."}
+
+
+@app.get("/jobs/{job_id}/applicants/{applicant_id}/alternative-matches")
+async def get_alternative_matches(
+    job_id: int,
+    applicant_id: int,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    # Verify applicant exists and job belongs to current user
+    job = db.query(models.Job).filter(models.Job.id == job_id).first()
+    if not job:
+        raise HTTPException(status_code=404, detail="Job position not found.")
+    if job.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to access this job.")
+        
+    applicant = db.query(models.Applicant).filter(
+        models.Applicant.id == applicant_id,
+        models.Applicant.job_id == job_id
+    ).first()
+    if not applicant:
+        raise HTTPException(status_code=404, detail="Applicant not found.")
+
+    # 1. Backfill candidate's resume embedding if missing
+    if not applicant.resume_embedding:
+        try:
+            applicant.resume_embedding = await get_embedding(applicant.resume_text)
+            db.commit()
+        except Exception as e:
+            print(f"Error backfilling applicant embedding: {e}")
+            raise HTTPException(status_code=500, detail=f"Failed to generate resume embedding: {e}")
+
+    # 2. Get all other active jobs for this user
+    other_jobs = db.query(models.Job).filter(
+        models.Job.user_id == current_user.id,
+        models.Job.id != job_id
+    ).all()
+
+    matches = []
+    for o_job in other_jobs:
+        # Backfill job's description embedding if missing
+        if not o_job.description_embedding:
+            try:
+                text_to_embed = f"{o_job.title}\n{o_job.priority_skills or ''}\n{o_job.description}"
+                o_job.description_embedding = await get_embedding(text_to_embed)
+                db.commit()
+            except Exception as e:
+                print(f"Error backfilling job embedding: {e}")
+                continue
+
+        # Compute cosine similarity
+        sim = cosine_similarity(applicant.resume_embedding, o_job.description_embedding)
+        similarity_pct = max(0.0, round(sim * 100, 1))
+
+        # Check if candidate is already screened for this other job
+        existing_other = None
+        if applicant.email and applicant.email.strip().lower() != "unknown@example.com":
+            existing_other = db.query(models.Applicant).filter(
+                models.Applicant.job_id == o_job.id,
+                func.lower(models.Applicant.email) == applicant.email.strip().lower()
+            ).first()
+
+        matches.append({
+            "job_id": o_job.id,
+            "title": o_job.title,
+            "department": o_job.department,
+            "similarity": similarity_pct,
+            "is_screened": existing_other is not None,
+            "screened_score": existing_other.match_score if existing_other else None,
+            "screened_applicant_id": existing_other.id if existing_other else None
+        })
+
+    # Sort matches by similarity percentage descending
+    matches.sort(key=lambda x: x["similarity"], reverse=True)
+    return matches
+
+
+@app.post("/jobs/{job_id}/applicants/{applicant_id}/transfer-screen/{target_job_id}", response_model=schemas.ApplicantResponse)
+async def transfer_screen_candidate(
+    job_id: int,
+    applicant_id: int,
+    target_job_id: int,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    # Verify applicant and source job ownership
+    source_job = db.query(models.Job).filter(models.Job.id == job_id).first()
+    if not source_job or source_job.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to access source job.")
+
+    applicant = db.query(models.Applicant).filter(
+        models.Applicant.id == applicant_id,
+        models.Applicant.job_id == job_id
+    ).first()
+    if not applicant:
+        raise HTTPException(status_code=404, detail="Applicant not found.")
+
+    # Verify target job ownership
+    target_job = db.query(models.Job).filter(models.Job.id == target_job_id).first()
+    if not target_job or target_job.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to access target job.")
+
+    # Check if they are already screened under the target job
+    existing_target = None
+    if applicant.email and applicant.email.strip().lower() != "unknown@example.com":
+        existing_target = db.query(models.Applicant).filter(
+            models.Applicant.job_id == target_job_id,
+            func.lower(models.Applicant.email) == applicant.email.strip().lower()
+        ).first()
+
+    # Trigger screening against the target job's description
+    try:
+        screening_res = await screen_resume(target_job.description, applicant.resume_text, target_job.priority_skills or "")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed screening candidate against target job: {e}")
+
+    # Use the same resume embedding or generate if missing
+    resume_emb = applicant.resume_embedding
+    if not resume_emb:
+        try:
+            resume_emb = await get_embedding(applicant.resume_text)
+            applicant.resume_embedding = resume_emb
+        except Exception as e:
+            print(f"Error generating embedding during transfer: {e}")
+
+    if existing_target:
+        # Update existing record under target job
+        existing_target.name = screening_res.get("candidate_name", applicant.name or "Unknown Candidate")
+        existing_target.resume_filename = applicant.resume_filename
+        existing_target.resume_text = applicant.resume_text
+        existing_target.resume_pdf_bytes = applicant.resume_pdf_bytes
+        existing_target.match_score = screening_res["match_score"]
+        existing_target.summary = screening_res["summary"]
+        existing_target.strengths = screening_res["strengths"]
+        existing_target.improvements = screening_res["improvements"]
+        existing_target.skills_matched = screening_res["skills_matched"]
+        existing_target.skills_missing = screening_res["skills_missing"]
+        existing_target.resume_embedding = resume_emb
+        existing_target.created_at = func.now()
+        
+        db.commit()
+        db.refresh(existing_target)
+        return existing_target
+    else:
+        # Create new record under target job
+        new_applicant = models.Applicant(
+            job_id=target_job_id,
+            email=applicant.email,
+            name=screening_res.get("candidate_name", applicant.name or "Unknown Candidate"),
+            resume_filename=applicant.resume_filename,
+            resume_text=applicant.resume_text,
+            resume_pdf_bytes=applicant.resume_pdf_bytes,
+            match_score=screening_res["match_score"],
+            summary=screening_res["summary"],
+            strengths=screening_res["strengths"],
+            improvements=screening_res["improvements"],
+            skills_matched=screening_res["skills_matched"],
+            skills_missing=screening_res["skills_missing"],
+            resume_embedding=resume_emb
+        )
+        db.add(new_applicant)
+        db.commit()
+        db.refresh(new_applicant)
+        return new_applicant
 
 
 if __name__ == "__main__":

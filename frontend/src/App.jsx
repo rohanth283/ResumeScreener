@@ -152,6 +152,44 @@ function App() {
     }
   };
 
+  const handleSwitchToJobApplicant = async (targetJobId, targetApplicantId) => {
+    const targetJob = jobs.find(j => j.id === targetJobId);
+    if (!targetJob) return;
+
+    setIsDrawerOpen(false);
+    setActiveApplicant(null);
+
+    setActiveJob(targetJob);
+    setApplicants([]);
+    setSelectedApplicantIds([]);
+    setActiveTab('candidates');
+    setExpandedEmailJobIds([]);
+    setApplicantsLoading(true);
+
+    try {
+      const response = await fetch(`${API_URL}/jobs/${targetJobId}/applicants`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (response.status === 401) {
+        handleLogout();
+        return;
+      }
+      if (!response.ok) throw new Error('Failed to load applicants.');
+      const data = await response.json();
+      setApplicants(data);
+      
+      const targetApp = data.find(a => a.id === targetApplicantId);
+      if (targetApp) {
+        setActiveApplicant(targetApp);
+        setIsDrawerOpen(true);
+      }
+    } catch (err) {
+      console.error(err.message);
+    } finally {
+      setApplicantsLoading(false);
+    }
+  };
+
   const fetchEmailsHistory = async (jobId) => {
     setEmailsLoading(true);
     try {
@@ -174,21 +212,24 @@ function App() {
 
   const handleCancelEmail = async (emailJobId) => {
     if (!window.confirm("Are you sure you want to cancel this scheduled email?")) return;
+    
+    const originalEmailsHistory = [...emailsHistory];
+    setEmailsHistory((prev) => prev.filter((e) => e.id !== emailJobId));
+
     try {
       const response = await fetch(`${API_URL}/jobs/${activeJob.id}/emails/${emailJobId}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (response.status === 401) {
+        setEmailsHistory(originalEmailsHistory);
         handleLogout();
         return;
       }
       const data = await response.json();
       if (!response.ok) throw new Error(data.detail || 'Could not cancel scheduled email.');
-      
-      // Refresh history
-      fetchEmailsHistory(activeJob.id);
     } catch (err) {
+      setEmailsHistory(originalEmailsHistory);
       alert(err.message);
     }
   };
@@ -333,21 +374,30 @@ function App() {
 
   const handleDeleteJob = async (jobId) => {
     if (!window.confirm('Are you sure you want to delete this job and all of its applicants?')) return;
+    
+    const originalJobs = [...jobs];
+    const originalActiveJob = activeJob;
+
+    setJobs((prev) => prev.filter((j) => j.id !== jobId));
+    if (activeJob && activeJob.id === jobId) {
+      setActiveJob(null);
+    }
+
     try {
       const response = await fetch(`${API_URL}/jobs/${jobId}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (response.status === 401) {
+        setJobs(originalJobs);
+        setActiveJob(originalActiveJob);
         handleLogout();
         return;
       }
       if (!response.ok) throw new Error('Could not delete job.');
-
-      // Remove from list and return to dashboard
-      setJobs((prev) => prev.filter((j) => j.id !== jobId));
-      setActiveJob(null);
     } catch (err) {
+      setJobs(originalJobs);
+      setActiveJob(originalActiveJob);
       alert(err.message);
     }
   };
@@ -580,6 +630,36 @@ function App() {
     if (!window.confirm(`Are you sure you want to permanently delete candidate ${applicant.name || 'this candidate'}?`)) {
       return;
     }
+    
+    // Backup current states for rollback
+    const originalApplicants = [...applicants];
+    const originalJobs = [...jobs];
+    const originalActiveJob = activeJob;
+    const originalSelectedIds = [...selectedApplicantIds];
+    const originalActiveApplicant = activeApplicant;
+    const originalIsDrawerOpen = isDrawerOpen;
+
+    // Optimistic UI updates
+    setApplicants((prev) => prev.filter((a) => a.id !== applicant.id));
+    
+    if (activeJob) {
+      setJobs((prevJobs) => 
+        prevJobs.map((j) => 
+          j.id === activeJob.id ? { ...j, applicant_count: Math.max(0, (j.applicant_count || 0) - 1) } : j
+        )
+      );
+      setActiveJob((prevJob) => 
+        prevJob ? { ...prevJob, applicant_count: Math.max(0, (prevJob.applicant_count || 0) - 1) } : null
+      );
+    }
+    
+    setSelectedApplicantIds((prev) => prev.filter((id) => id !== applicant.id));
+    
+    if (activeApplicant && activeApplicant.id === applicant.id) {
+      setIsDrawerOpen(false);
+      setActiveApplicant(null);
+    }
+
     try {
       const response = await fetch(`${API_URL}/jobs/${activeJob.id}/applicants/${applicant.id}`, {
         method: 'DELETE',
@@ -588,35 +668,24 @@ function App() {
         }
       });
       if (response.status === 401) {
+        setApplicants(originalApplicants);
+        setJobs(originalJobs);
+        setActiveJob(originalActiveJob);
+        setSelectedApplicantIds(originalSelectedIds);
+        setActiveApplicant(originalActiveApplicant);
+        setIsDrawerOpen(originalIsDrawerOpen);
         handleLogout();
         return;
       }
       if (!response.ok) throw new Error('Could not delete candidate.');
-      
-      // Update state
-      setApplicants((prev) => prev.filter((a) => a.id !== applicant.id));
-      
-      // Decrement applicant_count on the active job card in-place
-      if (activeJob) {
-        setJobs((prevJobs) => 
-          prevJobs.map((j) => 
-            j.id === activeJob.id ? { ...j, applicant_count: Math.max(0, (j.applicant_count || 0) - 1) } : j
-          )
-        );
-        setActiveJob((prevJob) => 
-          prevJob ? { ...prevJob, applicant_count: Math.max(0, (prevJob.applicant_count || 0) - 1) } : null
-        );
-      }
-      
-      // Remove from selected ids if checked
-      setSelectedApplicantIds((prev) => prev.filter((id) => id !== applicant.id));
-      
-      // Close the drawer if the deleted applicant is the active applicant
-      if (activeApplicant && activeApplicant.id === applicant.id) {
-        setIsDrawerOpen(false);
-        setActiveApplicant(null);
-      }
     } catch (err) {
+      // Rollback
+      setApplicants(originalApplicants);
+      setJobs(originalJobs);
+      setActiveJob(originalActiveJob);
+      setSelectedApplicantIds(originalSelectedIds);
+      setActiveApplicant(originalActiveApplicant);
+      setIsDrawerOpen(originalIsDrawerOpen);
       alert(err.message);
     }
   };
@@ -1193,6 +1262,7 @@ function App() {
         onRescreen={handleRescreenTrigger}
         onToggleReview={handleToggleReview}
         onDelete={handleDeleteApplicant}
+        onSwitchToApplicant={handleSwitchToJobApplicant}
         token={token}
         apiUrl={API_URL}
         jobId={activeJob ? activeJob.id : null}

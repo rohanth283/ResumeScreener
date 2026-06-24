@@ -789,6 +789,64 @@ def test_resume_binary_streaming():
     assert res_pdf_header.content == pdf_content
 
 
+def test_cross_position_candidate_matching():
+    # 1. Signup recruiter
+    signup_data = {"email": "match_tester@example.com", "password": "password123", "name": "Match Tester"}
+    res = client.post("/auth/signup", json=signup_data)
+    assert res.status_code == 200
+    token = res.json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    # 2. Create Job A (React) and Job B (Python)
+    job_a_payload = {"title": "React UI Engineer", "description": "Expert in React hooks and CSS styling."}
+    res = client.post("/jobs", json=job_a_payload, headers=headers)
+    assert res.status_code == 200
+    job_a_id = res.json()["id"]
+
+    job_b_payload = {"title": "Python API Developer", "description": "Experienced in Python and FastAPI backend programming."}
+    res = client.post("/jobs", json=job_b_payload, headers=headers)
+    assert res.status_code == 200
+    job_b_id = res.json()["id"]
+
+    # 3. Screen applicant for Job A
+    resume_content = b"Candidate John Doe. React Developer. 3 years experience building UI layouts."
+    resume = ("resume.txt", resume_content, "text/plain")
+    res = client.post(f"/jobs/{job_a_id}/screen", files={"resume_file": resume}, headers=headers)
+    assert res.status_code == 200
+    app_data = res.json()
+    applicant_id = app_data["id"]
+
+    # 4. Fetch alternative matches
+    res_matches = client.get(f"/jobs/{job_a_id}/applicants/{applicant_id}/alternative-matches", headers=headers)
+    assert res_matches.status_code == 200
+    matches = res_matches.json()
+    
+    # Matches list should have 1 item (Job B, since Job A is the original position)
+    assert len(matches) == 1
+    assert matches[0]["job_id"] == job_b_id
+    assert matches[0]["title"] == "Python API Developer"
+    assert matches[0]["is_screened"] is False
+    assert "similarity" in matches[0]
+
+    # 5. Screen candidate for Job B using cross-job matching
+    res_transfer = client.post(f"/jobs/{job_a_id}/applicants/{applicant_id}/transfer-screen/{job_b_id}", headers=headers)
+    assert res_transfer.status_code == 200
+    transfer_data = res_transfer.json()
+    assert transfer_data["job_id"] == job_b_id
+    assert transfer_data["email"] == app_data["email"]
+    transfer_applicant_id = transfer_data["id"]
+
+    # 6. Fetch alternative matches again
+    res_matches_after = client.get(f"/jobs/{job_a_id}/applicants/{applicant_id}/alternative-matches", headers=headers)
+    assert res_matches_after.status_code == 200
+    matches_after = res_matches_after.json()
+    assert len(matches_after) == 1
+    assert matches_after[0]["is_screened"] is True
+    assert matches_after[0]["screened_applicant_id"] == transfer_applicant_id
+    assert matches_after[0]["screened_score"] == transfer_data["match_score"]
+
+
+
 
 
 

@@ -27,6 +27,7 @@ class Job(Base):
     employment_type = Column(String, nullable=True)  # Full-time, Part-time, Contract, etc.
     description = Column(String, nullable=False)
     priority_skills = Column(String, nullable=True)  # Comma-separated list of priority skills
+    description_embedding = Column(JSON, nullable=True)  # Stores 3072-dim list of floats
     created_at = Column(DateTime, default=datetime.utcnow)
 
     # Relationship to user
@@ -52,6 +53,7 @@ class Applicant(Base):
     skills_missing = Column(JSON, nullable=False)  # List of strings missing from candidate
     is_reviewed = Column(Boolean, default=False, nullable=True)
     resume_pdf_bytes = deferred(Column(LargeBinary, nullable=True))
+    resume_embedding = Column(JSON, nullable=True)  # Stores 3072-dim list of floats
     created_at = Column(DateTime, default=datetime.utcnow)
 
     job = relationship("Job", back_populates="applicants")

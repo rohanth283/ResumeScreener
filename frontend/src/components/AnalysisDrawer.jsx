@@ -1,10 +1,14 @@
 import { useEffect, useState } from 'react';
 import './AnalysisDrawer.css';
 
-export default function AnalysisDrawer({ isOpen, onClose, applicant, onRescreen, onToggleReview, onDelete, token, apiUrl, jobId }) {
+export default function AnalysisDrawer({ isOpen, onClose, applicant, onRescreen, onToggleReview, onDelete, onSwitchToApplicant, token, apiUrl, jobId }) {
   const [shouldRender, setShouldRender] = useState(isOpen);
   const [activeTab, setActiveTab] = useState('report');
   const [iframeLoading, setIframeLoading] = useState(true);
+  
+  const [altMatches, setAltMatches] = useState([]);
+  const [loadingAltMatches, setLoadingAltMatches] = useState(false);
+  const [screeningTargetJobId, setScreeningTargetJobId] = useState(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -16,6 +20,30 @@ export default function AnalysisDrawer({ isOpen, onClose, applicant, onRescreen,
       return () => clearTimeout(timer);
     }
   }, [isOpen, applicant]);
+
+  useEffect(() => {
+    if (isOpen && applicant && jobId) {
+      setAltMatches([]);
+      setLoadingAltMatches(true);
+      fetch(`${apiUrl}/jobs/${jobId}/applicants/${applicant.id}/alternative-matches`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+        .then(res => {
+          if (!res.ok) throw new Error('Failed to load alternative matches.');
+          return res.json();
+        })
+        .then(data => {
+          setAltMatches(data);
+          setLoadingAltMatches(false);
+        })
+        .catch(err => {
+          console.error(err);
+          setLoadingAltMatches(false);
+        });
+    }
+  }, [isOpen, applicant, jobId, apiUrl, token]);
 
   useEffect(() => {
     setIframeLoading(true);
@@ -37,6 +65,39 @@ export default function AnalysisDrawer({ isOpen, onClose, applicant, onRescreen,
     document.body.appendChild(element);
     element.click();
     document.body.removeChild(element);
+  };
+
+  const handleScreenForAlternative = (targetJobId) => {
+    setScreeningTargetJobId(targetJobId);
+    fetch(`${apiUrl}/jobs/${jobId}/applicants/${applicant.id}/transfer-screen/${targetJobId}`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    })
+      .then(res => {
+        if (!res.ok) throw new Error('Failed to screen for alternative job.');
+        return res.json();
+      })
+      .then((newApplicant) => {
+        setAltMatches(prev => prev.map(m => {
+          if (m.job_id === targetJobId) {
+            return {
+              ...m,
+              is_screened: true,
+              screened_score: newApplicant.match_score,
+              screened_applicant_id: newApplicant.id
+            };
+          }
+          return m;
+        }));
+        setScreeningTargetJobId(null);
+      })
+      .catch(err => {
+        console.error(err);
+        alert(err.message);
+        setScreeningTargetJobId(null);
+      });
   };
 
   return (
@@ -189,6 +250,67 @@ export default function AnalysisDrawer({ isOpen, onClose, applicant, onRescreen,
                     <li key={idx}>{imp}</li>
                   ))}
                 </ul>
+              </div>
+
+              {/* Alternative Positions Match */}
+              <div className="detail-block alternative-positions-block">
+                <h5>Alternative Position Matches</h5>
+                {loadingAltMatches ? (
+                  <div className="alt-loading">
+                    <span className="loading-spinner mini"></span>
+                    <p>Analyzing candidate against other active positions...</p>
+                  </div>
+                ) : altMatches.length === 0 ? (
+                  <p className="no-alt-msg">No other active job positions found to match against.</p>
+                ) : (
+                  <div className="alt-matches-list">
+                    {altMatches.map((match) => (
+                      <div key={match.job_id} className="alt-match-card">
+                        <div className="alt-match-info">
+                          <div className="alt-match-title-row">
+                            <span className="alt-match-title">{match.title}</span>
+                            <span className={`alt-match-badge ${match.similarity >= 80 ? 'high' : match.similarity >= 50 ? 'medium' : 'low'}`}>
+                              {match.similarity}% Match
+                            </span>
+                          </div>
+                          {match.department && <span className="alt-match-dept">{match.department}</span>}
+                        </div>
+                        <div className="alt-match-action">
+                          {match.is_screened ? (
+                            <div className="screened-status-row">
+                              <span className="screened-score-badge">
+                                Screened: <strong>{match.screened_score}%</strong>
+                              </span>
+                              <button
+                                type="button"
+                                className="view-alt-app-btn"
+                                onClick={() => onSwitchToApplicant(match.job_id, match.screened_applicant_id)}
+                              >
+                                View
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              type="button"
+                              className="screen-alt-btn"
+                              disabled={screeningTargetJobId !== null}
+                              onClick={() => handleScreenForAlternative(match.job_id)}
+                            >
+                              {screeningTargetJobId === match.job_id ? (
+                                <>
+                                  <span className="loading-spinner mini"></span>
+                                  Screening...
+                                </>
+                              ) : (
+                                "Screen for Role"
+                              )}
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </>
           ) : (
