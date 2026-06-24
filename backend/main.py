@@ -465,6 +465,62 @@ def get_job_applicants(
     applicants = db.query(models.Applicant).filter(
         models.Applicant.job_id == job_id
     ).order_by(models.Applicant.match_score.desc()).all()
+
+    # Pre-fetch other active jobs for this user
+    other_jobs = db.query(models.Job).filter(
+        models.Job.user_id == current_user.id,
+        models.Job.id != job_id
+    ).all()
+
+    # Pre-fetch candidate screened status map to avoid query loops
+    screened_lookup = {}
+    applicant_emails = [a.email.strip().lower() for a in applicants if a.email and a.email.strip().lower() != "unknown@example.com"]
+    if applicant_emails:
+        screened_records = db.query(models.Applicant.email, models.Applicant.job_id, models.Applicant.id).filter(
+            func.lower(models.Applicant.email).in_(applicant_emails)
+        ).all()
+        for email_addr, o_job_id, app_id in screened_records:
+            e_lower = email_addr.strip().lower()
+            if e_lower not in screened_lookup:
+                screened_lookup[e_lower] = {}
+            screened_lookup[e_lower][o_job_id] = app_id
+
+    # Attach best alternative match properties (dynamic runtime attributes)
+    for app in applicants:
+        best_title = None
+        best_o_id = None
+        best_score = None
+        best_is_screened = None
+        best_app_id = None
+
+        if app.resume_embedding:
+            highest_sim = -1.0
+            for o_job in other_jobs:
+                if o_job.description_embedding:
+                    sim = cosine_similarity(app.resume_embedding, o_job.description_embedding)
+                    if sim > highest_sim:
+                        highest_sim = sim
+                        best_title = o_job.title
+                        best_o_id = o_job.id
+            
+            # Use 50% matching similarity as threshold to suggest alternative position
+            if highest_sim >= 0.50:
+                best_score = max(0.0, round(highest_sim * 100, 1))
+                email_lower = app.email.strip().lower() if app.email else ""
+                best_is_screened = email_lower in screened_lookup and best_o_id in screened_lookup[email_lower]
+                best_app_id = screened_lookup[email_lower][best_o_id] if best_is_screened else None
+            else:
+                best_title = None
+                best_o_id = None
+                best_score = None
+                best_is_screened = None
+                best_app_id = None
+
+        setattr(app, "best_alternative_job_title", best_title)
+        setattr(app, "best_alternative_job_id", best_o_id)
+        setattr(app, "best_alternative_score", best_score)
+        setattr(app, "best_alternative_is_screened", best_is_screened)
+        setattr(app, "best_alternative_applicant_id", best_app_id)
     
     return applicants
 

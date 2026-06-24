@@ -78,6 +78,10 @@ function App() {
 
   const [editingJob, setEditingJob] = useState(null);
   const [rescreenApplicant, setRescreenApplicant] = useState(null);
+  
+  // Alt Match recommendations modal state
+  const [altMatchModalData, setAltMatchModalData] = useState(null);
+  const [altMatchScreening, setAltMatchScreening] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const [jobsLoading, setJobsLoading] = useState(() => !!localStorage.getItem('auth_token'));
@@ -187,6 +191,41 @@ function App() {
       console.error(err.message);
     } finally {
       setApplicantsLoading(false);
+    }
+  };
+
+  const handleStartAlternativeScreen = async (applicant, targetJobId) => {
+    setAltMatchScreening(true);
+    try {
+      const response = await fetch(`${API_URL}/jobs/${activeJob.id}/applicants/${applicant.id}/transfer-screen/${targetJobId}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      if (response.status === 401) {
+        handleLogout();
+        return;
+      }
+      if (!response.ok) throw new Error('Failed to screen candidate for alternative role.');
+      const newApp = await response.json();
+      
+      // Update locally matched state
+      setApplicants(prev => prev.map(a => {
+        if (a.id === applicant.id) {
+          return { ...a, best_alternative_is_screened: true };
+        }
+        return a;
+      }));
+      
+      setAltMatchModalData(null);
+      alert(`Screening complete! Candidate scored ${newApp.match_score}% for ${applicant.best_alternative_job_title}. Switching views...`);
+      handleSwitchToJobApplicant(targetJobId, newApp.id);
+    } catch (err) {
+      console.error(err);
+      alert(err.message);
+    } finally {
+      setAltMatchScreening(false);
     }
   };
 
@@ -1047,6 +1086,19 @@ function App() {
                                     ✓ Reviewed
                                   </span>
                                 )}
+                                {app.best_alternative_job_title && (
+                                  <button
+                                    type="button"
+                                    className={`alt-match-pill-btn ${app.best_alternative_is_screened ? 'screened' : ''}`}
+                                    title={`Click to view alternative position match: ${app.best_alternative_job_title} (${app.best_alternative_score}% match)`}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setAltMatchModalData(app);
+                                    }}
+                                  >
+                                    💼 Match: {app.best_alternative_job_title} ({app.best_alternative_score}%)
+                                  </button>
+                                )}
                               </div>
                               <div className="candidate-email-cell">{app.email}</div>
                             </td>
@@ -1251,6 +1303,88 @@ function App() {
           fetchEmailsHistory(activeJob.id);
         }}
       />
+
+      {altMatchModalData && (
+        <div className="alt-match-modal-overlay" onClick={() => setAltMatchModalData(null)}>
+          <div className="alt-match-modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="alt-match-modal-header">
+              <h3>Alternative Job Match Recommendation</h3>
+              <button 
+                type="button" 
+                className="close-alt-modal-btn" 
+                onClick={() => setAltMatchModalData(null)}
+              >
+                ✕
+              </button>
+            </div>
+            <div className="alt-match-modal-body">
+              <div className="alt-modal-candidate-row">
+                <span className="alt-modal-label">Candidate Name:</span>
+                <span className="alt-modal-val">{altMatchModalData.name || 'Unknown Candidate'}</span>
+              </div>
+              <div className="alt-modal-candidate-row">
+                <span className="alt-modal-label">Email Address:</span>
+                <span className="alt-modal-val">{altMatchModalData.email}</span>
+              </div>
+              
+              <div className="alt-modal-divider" />
+              
+              <div className="alt-modal-recommended-card">
+                <div className="alt-modal-rec-header">
+                  <span className="alt-modal-rec-tag">🎯 Recommended Role</span>
+                  <span className={`alt-match-badge ${altMatchModalData.best_alternative_score >= 80 ? 'high' : altMatchModalData.best_alternative_score >= 50 ? 'medium' : 'low'}`}>
+                    {altMatchModalData.best_alternative_score}% Semantic Match
+                  </span>
+                </div>
+                <div className="alt-modal-rec-title">{altMatchModalData.best_alternative_job_title}</div>
+                <p className="alt-modal-rec-desc">
+                  Based on AI vector analysis of the candidate's resume and your other open jobs, this candidate is an excellent fit for the <strong>{altMatchModalData.best_alternative_job_title}</strong> position.
+                </p>
+              </div>
+            </div>
+            
+            <div className="alt-match-modal-footer">
+              <button 
+                type="button" 
+                className="btn-secondary" 
+                onClick={() => setAltMatchModalData(null)}
+              >
+                Cancel
+              </button>
+              {altMatchModalData.best_alternative_is_screened ? (
+                <button 
+                  type="button" 
+                  className="btn-primary"
+                  onClick={() => {
+                    const targetJobId = altMatchModalData.best_alternative_job_id;
+                    const targetAppId = altMatchModalData.best_alternative_applicant_id;
+                    setAltMatchModalData(null);
+                    handleSwitchToJobApplicant(targetJobId, targetAppId);
+                  }}
+                >
+                  View Existing Application
+                </button>
+              ) : (
+                <button 
+                  type="button" 
+                  className="btn-primary"
+                  disabled={altMatchScreening}
+                  onClick={() => handleStartAlternativeScreen(altMatchModalData, altMatchModalData.best_alternative_job_id)}
+                >
+                  {altMatchScreening ? (
+                    <>
+                      <span className="loading-spinner mini" style={{ borderColor: 'white', borderTopColor: 'transparent' }} />
+                      Screening Candidate...
+                    </>
+                  ) : (
+                    "Start Screening Process"
+                  )}
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

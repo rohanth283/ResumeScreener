@@ -777,3 +777,211 @@
   opacity: 1;
 }
 
+/* Alternative Match Badge and Recommendation Modal */
+.alt-match-pill-btn {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 50px;
+  margin-left: 10px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  line-height: 1;
+  vertical-align: middle;
+  transition: all 0.2s ease;
+}
+
+.alt-match-pill-btn:hover {
+  background: var(--accent-light);
+  border-color: var(--accent);
+  transform: translateY(-0.5px);
+}
+
+.alt-match-pill-btn.screened {
+  background: var(--success-light);
+  color: var(--success);
+  border-color: rgba(24, 128, 56, 0.25);
+}
+
+.alt-match-pill-btn.screened:hover {
+  background: rgba(24, 128, 56, 0.15);
+}
+
+/* Modal Overlay */
+.alt-match-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(32, 33, 36, 0.45);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  z-index: 2000;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  animation: fadeIn 0.2s ease-out;
+}
+
+/* Modal Content Box */
+.alt-match-modal-content {
+  background: var(--surface);
+  border-radius: 12px;
+  width: 100%;
+  max-width: 520px;
+  box-shadow: 0 12px 36px rgba(60, 64, 67, 0.2);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-sizing: border-box;
+  animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.alt-match-modal-header {
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.alt-match-modal-header h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.close-alt-modal-btn {
+  background: transparent;
+  border: none;
+  font-size: 18px;
+  color: var(--text-muted);
+  cursor: pointer;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.close-alt-modal-btn:hover {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+
+.alt-match-modal-body {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.alt-modal-candidate-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 14px;
+}
+
+.alt-modal-label {
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.alt-modal-val {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.alt-modal-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 4px 0;
+}
+
+.alt-modal-recommended-card {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.alt-modal-rec-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.alt-modal-rec-tag {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--accent);
+  letter-spacing: 0.05em;
+}
+
+.alt-match-badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 50px;
+}
+
+.alt-match-badge.high {
+  background: var(--success-light);
+  color: var(--success);
+  border: 1px solid rgba(24, 128, 56, 0.2);
+}
+
+.alt-match-badge.medium {
+  background: var(--warning-light);
+  color: #B06000;
+  border: 1px solid rgba(249, 171, 0, 0.2);
+}
+
+.alt-match-badge.low {
+  background: var(--danger-light);
+  color: var(--danger);
+  border: 1px solid rgba(217, 48, 37, 0.15);
+}
+
+.alt-modal-rec-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.alt-modal-rec-desc {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.alt-match-modal-footer {
+  padding: 16px 24px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  background: var(--bg);
+}
+
+@keyframes slideUp {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+

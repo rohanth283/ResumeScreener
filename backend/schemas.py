@@ -75,6 +75,11 @@ class ApplicantResponse(BaseModel):
     skills_missing: List[str]
     is_reviewed: Optional[bool] = False
     has_resume_pdf: bool = False
+    best_alternative_job_title: Optional[str] = None
+    best_alternative_job_id: Optional[int] = None
+    best_alternative_score: Optional[float] = None
+    best_alternative_is_screened: Optional[bool] = None
+    best_alternative_applicant_id: Optional[int] = None
     created_at: datetime
 
     class Config:
