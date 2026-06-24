@@ -34,8 +34,12 @@ def run_migrations():
             # Optimization: If running in serverless (Vercel) and database is already initialized,
             # we skip DDL column additions/RLS policies/indexes to achieve ultra-low cold start times.
             if os.getenv("VERCEL") == "1" and "users" in table_names:
-                print("MIGRATION: Skipping heavy startup DDL checks in serverless environment.")
-                return
+                # Ensure description_embedding column exists before skipping
+                if "jobs" in table_names:
+                    jobs_columns = [c["name"] for c in inspector.get_columns("jobs")]
+                    if "description_embedding" in jobs_columns:
+                        print("MIGRATION: Skipping heavy startup DDL checks in serverless environment.")
+                        return
             
             # 1. Initialize tables if empty
             if not table_names or "users" not in table_names:
