@@ -483,8 +483,8 @@ def attach_best_alternative_matches(applicants: list[models.Applicant], db: Sess
                         best_title = o_job.title
                         best_o_id = o_job.id
             
-            # Use 50% matching similarity as threshold to suggest alternative position
-            if highest_sim >= 0.50:
+            # Use 65% matching similarity as threshold to suggest alternative position
+            if highest_sim >= 0.65:
                 best_score = max(0.0, round(highest_sim * 100, 1))
                 email_lower = app.email.strip().lower() if app.email else ""
                 best_is_screened = email_lower in screened_lookup and best_o_id in screened_lookup[email_lower]
