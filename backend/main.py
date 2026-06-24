@@ -422,10 +422,22 @@ def get_jobs(
     db: Session = Depends(get_db)
 ):
     jobs = db.query(models.Job).filter(models.Job.user_id == current_user.id).all()
-    # Add applicant_count dynamically
+    if not jobs:
+        return []
+        
+    # Batch query applicant counts to solve the N+1 query latency bottleneck
+    job_ids = [job.id for job in jobs]
+    counts = db.query(
+        models.Applicant.job_id,
+        func.count(models.Applicant.id)
+    ).filter(
+        models.Applicant.job_id.in_(job_ids)
+    ).group_by(models.Applicant.job_id).all()
+    
+    count_map = {job_id: cnt for job_id, cnt in counts}
     for job in jobs:
-        count = db.query(models.Applicant).filter(models.Applicant.job_id == job.id).count()
-        setattr(job, "applicant_count", count)
+        setattr(job, "applicant_count", count_map.get(job.id, 0))
+        
     return jobs
 
 
