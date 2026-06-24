@@ -1,4 +1,5 @@
 import os
+import asyncio
 from pathlib import Path
 from dotenv import load_dotenv
 
@@ -442,6 +443,60 @@ def delete_job(
 
 
 # Applicant & Screening API Endpoints
+def attach_best_alternative_matches(applicants: list[models.Applicant], db: Session, user_id: int, job_id: int):
+    """
+    Computes and attaches best alternative match properties as dynamic runtime attributes.
+    Only computes alternate matches for applicants whose primary match score is strictly below 65%.
+    """
+    other_jobs = db.query(models.Job).filter(
+        models.Job.user_id == user_id,
+        models.Job.id != job_id
+    ).all()
+
+    # Pre-fetch candidate screened status map to avoid query loops
+    screened_lookup = {}
+    applicant_emails = [a.email.strip().lower() for a in applicants if a.email and a.email.strip().lower() != "unknown@example.com"]
+    if applicant_emails:
+        screened_records = db.query(models.Applicant.email, models.Applicant.job_id, models.Applicant.id).filter(
+            func.lower(models.Applicant.email).in_(applicant_emails)
+        ).all()
+        for email_addr, o_job_id, app_id in screened_records:
+            e_lower = email_addr.strip().lower()
+            if e_lower not in screened_lookup:
+                screened_lookup[e_lower] = {}
+            screened_lookup[e_lower][o_job_id] = app_id
+
+    for app in applicants:
+        best_title = None
+        best_o_id = None
+        best_score = None
+        best_is_screened = None
+        best_app_id = None
+
+        if app.resume_embedding and (app.match_score or 0) < 65:
+            highest_sim = -1.0
+            for o_job in other_jobs:
+                if o_job.description_embedding:
+                    sim = cosine_similarity(app.resume_embedding, o_job.description_embedding)
+                    if sim > highest_sim:
+                        highest_sim = sim
+                        best_title = o_job.title
+                        best_o_id = o_job.id
+            
+            # Use 50% matching similarity as threshold to suggest alternative position
+            if highest_sim >= 0.50:
+                best_score = max(0.0, round(highest_sim * 100, 1))
+                email_lower = app.email.strip().lower() if app.email else ""
+                best_is_screened = email_lower in screened_lookup and best_o_id in screened_lookup[email_lower]
+                best_app_id = screened_lookup[email_lower][best_o_id] if best_is_screened else None
+
+        setattr(app, "best_alternative_job_title", best_title)
+        setattr(app, "best_alternative_job_id", best_o_id)
+        setattr(app, "best_alternative_score", best_score)
+        setattr(app, "best_alternative_is_screened", best_is_screened)
+        setattr(app, "best_alternative_applicant_id", best_app_id)
+
+
 @app.get("/jobs/{job_id}/applicants", response_model=list[schemas.ApplicantResponse])
 def get_job_applicants(
     job_id: int,
@@ -466,61 +521,7 @@ def get_job_applicants(
         models.Applicant.job_id == job_id
     ).order_by(models.Applicant.match_score.desc()).all()
 
-    # Pre-fetch other active jobs for this user
-    other_jobs = db.query(models.Job).filter(
-        models.Job.user_id == current_user.id,
-        models.Job.id != job_id
-    ).all()
-
-    # Pre-fetch candidate screened status map to avoid query loops
-    screened_lookup = {}
-    applicant_emails = [a.email.strip().lower() for a in applicants if a.email and a.email.strip().lower() != "unknown@example.com"]
-    if applicant_emails:
-        screened_records = db.query(models.Applicant.email, models.Applicant.job_id, models.Applicant.id).filter(
-            func.lower(models.Applicant.email).in_(applicant_emails)
-        ).all()
-        for email_addr, o_job_id, app_id in screened_records:
-            e_lower = email_addr.strip().lower()
-            if e_lower not in screened_lookup:
-                screened_lookup[e_lower] = {}
-            screened_lookup[e_lower][o_job_id] = app_id
-
-    # Attach best alternative match properties (dynamic runtime attributes)
-    for app in applicants:
-        best_title = None
-        best_o_id = None
-        best_score = None
-        best_is_screened = None
-        best_app_id = None
-
-        if app.resume_embedding:
-            highest_sim = -1.0
-            for o_job in other_jobs:
-                if o_job.description_embedding:
-                    sim = cosine_similarity(app.resume_embedding, o_job.description_embedding)
-                    if sim > highest_sim:
-                        highest_sim = sim
-                        best_title = o_job.title
-                        best_o_id = o_job.id
-            
-            # Use 50% matching similarity as threshold to suggest alternative position
-            if highest_sim >= 0.50:
-                best_score = max(0.0, round(highest_sim * 100, 1))
-                email_lower = app.email.strip().lower() if app.email else ""
-                best_is_screened = email_lower in screened_lookup and best_o_id in screened_lookup[email_lower]
-                best_app_id = screened_lookup[email_lower][best_o_id] if best_is_screened else None
-            else:
-                best_title = None
-                best_o_id = None
-                best_score = None
-                best_is_screened = None
-                best_app_id = None
-
-        setattr(app, "best_alternative_job_title", best_title)
-        setattr(app, "best_alternative_job_id", best_o_id)
-        setattr(app, "best_alternative_score", best_score)
-        setattr(app, "best_alternative_is_screened", best_is_screened)
-        setattr(app, "best_alternative_applicant_id", best_app_id)
+    attach_best_alternative_matches(applicants, db, current_user.id, job_id)
     
     return applicants
 
@@ -559,15 +560,23 @@ async def screen_applicant_resume(
         file_bytes = await resume_file.read()
         resume_text = await anyio.to_thread.run_sync(extract_text, resume_file.filename, file_bytes)
         
-        # Trigger Google Gemini AI matching with priority skills weighting asynchronously
-        screening_res = await screen_resume(job.description, resume_text, job.priority_skills or "")
+        # Trigger Gemini AI matching and embedding generation concurrently
+        screening_task = screen_resume(job.description, resume_text, job.priority_skills or "")
+        embedding_task = get_embedding(resume_text)
         
-        # Generate resume embedding
-        resume_emb = None
-        try:
-            resume_emb = await get_embedding(resume_text)
-        except Exception as e:
-            print(f"Error generating resume embedding: {e}")
+        results = await asyncio.gather(screening_task, embedding_task, return_exceptions=True)
+        
+        # Handle the screening result
+        if isinstance(results[0], Exception):
+            raise results[0]
+        screening_res = results[0]
+        
+        # Handle the embedding result
+        if isinstance(results[1], Exception):
+            print(f"Error generating resume embedding: {results[1]}")
+            resume_emb = None
+        else:
+            resume_emb = results[1]
             
         # Use extracted email if not passed explicitly in form
         candidate_email = email.strip() if (email and email.strip()) else screening_res.get("candidate_email", "unknown@example.com")
@@ -597,6 +606,7 @@ async def screen_applicant_resume(
             
             db.commit()
             db.refresh(existing_applicant)
+            attach_best_alternative_matches([existing_applicant], db, current_user.id, job_id)
             return existing_applicant
         else:
             # Save results to SQL database
@@ -618,6 +628,7 @@ async def screen_applicant_resume(
             db.add(applicant)
             db.commit()
             db.refresh(applicant)
+            attach_best_alternative_matches([applicant], db, current_user.id, job_id)
             return applicant
     except ValueError as exc:
         raise HTTPException(
@@ -680,15 +691,23 @@ async def rescreen_applicant_resume(
         file_bytes = await resume_file.read()
         resume_text = await anyio.to_thread.run_sync(extract_text, resume_file.filename, file_bytes)
         
-        # Trigger Google Gemini AI matching with priority skills weighting asynchronously
-        screening_res = await screen_resume(job.description, resume_text, job.priority_skills or "")
+        # Trigger Gemini AI matching and embedding generation concurrently
+        screening_task = screen_resume(job.description, resume_text, job.priority_skills or "")
+        embedding_task = get_embedding(resume_text)
         
-        # Generate resume embedding
-        resume_emb = None
-        try:
-            resume_emb = await get_embedding(resume_text)
-        except Exception as e:
-            print(f"Error generating resume embedding during rescreen: {e}")
+        results = await asyncio.gather(screening_task, embedding_task, return_exceptions=True)
+        
+        # Handle the screening result
+        if isinstance(results[0], Exception):
+            raise results[0]
+        screening_res = results[0]
+        
+        # Handle the embedding result
+        if isinstance(results[1], Exception):
+            print(f"Error generating resume embedding during rescreen: {results[1]}")
+            resume_emb = None
+        else:
+            resume_emb = results[1]
             
         # Update existing candidate record
         applicant.name = screening_res.get("candidate_name", "Unknown Candidate")
@@ -705,6 +724,7 @@ async def rescreen_applicant_resume(
         
         db.commit()
         db.refresh(applicant)
+        attach_best_alternative_matches([applicant], db, current_user.id, job_id)
         
         return applicant
     except ValueError as exc:
@@ -756,6 +776,7 @@ def toggle_applicant_review(
     applicant.is_reviewed = not (applicant.is_reviewed or False)
     db.commit()
     db.refresh(applicant)
+    attach_best_alternative_matches([applicant], db, current_user.id, job_id)
     return applicant
 
 
@@ -1307,6 +1328,7 @@ async def transfer_screen_candidate(
         
         db.commit()
         db.refresh(existing_target)
+        attach_best_alternative_matches([existing_target], db, current_user.id, target_job_id)
         return existing_target
     else:
         # Create new record under target job
@@ -1328,6 +1350,7 @@ async def transfer_screen_candidate(
         db.add(new_applicant)
         db.commit()
         db.refresh(new_applicant)
+        attach_best_alternative_matches([new_applicant], db, current_user.id, target_job_id)
         return new_applicant
 
 

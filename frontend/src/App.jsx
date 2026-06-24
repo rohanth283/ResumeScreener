@@ -1050,6 +1050,7 @@ function App() {
                         <th onClick={() => handleSort('date')} style={{ cursor: 'pointer', userSelect: 'none' }} className="sortable-header">
                           Date Screened {sortBy === 'date' && (sortOrder === 'asc' ? ' ▲' : ' ▼')}
                         </th>
+                        <th>Best Alternate Fit</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1086,19 +1087,6 @@ function App() {
                                     ✓ Reviewed
                                   </span>
                                 )}
-                                {app.best_alternative_job_title && (
-                                  <button
-                                    type="button"
-                                    className={`alt-match-pill-btn ${app.best_alternative_is_screened ? 'screened' : ''}`}
-                                    title={`Click to view alternative position match: ${app.best_alternative_job_title} (${app.best_alternative_score}% match)`}
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setAltMatchModalData(app);
-                                    }}
-                                  >
-                                    💼 Match: {app.best_alternative_job_title} ({app.best_alternative_score}%)
-                                  </button>
-                                )}
                               </div>
                               <div className="candidate-email-cell">{app.email}</div>
                             </td>
@@ -1109,6 +1097,23 @@ function App() {
                             </td>
                             <td>{app.resume_filename}</td>
                             <td>{ensureUtcDate(app.created_at).toLocaleDateString()}</td>
+                            <td onClick={(e) => e.stopPropagation()}>
+                              {app.best_alternative_job_title ? (
+                                <button
+                                  type="button"
+                                  className={`alt-match-pill-btn ${app.best_alternative_is_screened ? 'screened' : ''}`}
+                                  title={`Click to view alternative position match: ${app.best_alternative_job_title} (${app.best_alternative_score}% match)`}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setAltMatchModalData(app);
+                                  }}
+                                >
+                                  💼 Match: {app.best_alternative_job_title} ({app.best_alternative_score}%)
+                                </button>
+                              ) : (
+                                <span style={{ color: 'var(--text-muted)' }}>—</span>
+                              )}
+                            </td>
                           </tr>
                         );
                       })}
