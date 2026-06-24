@@ -1102,13 +1102,13 @@ function App() {
                                 <button
                                   type="button"
                                   className={`alt-match-pill-btn ${app.best_alternative_is_screened ? 'screened' : ''}`}
-                                  title={`Click to view alternative position match: ${app.best_alternative_job_title} (${app.best_alternative_score}% match)`}
+                                  title="View alternative position match details"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     setAltMatchModalData(app);
                                   }}
                                 >
-                                  💼 Match: {app.best_alternative_job_title} ({app.best_alternative_score}%)
+                                  💼 Different Match
                                 </button>
                               ) : (
                                 <span style={{ color: 'var(--text-muted)' }}>—</span>
