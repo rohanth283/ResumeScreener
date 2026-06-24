@@ -35,10 +35,10 @@ def run_migrations():
             # Optimization: If running in serverless (Vercel) and database is already initialized,
             # we skip DDL column additions/RLS policies/indexes to achieve ultra-low cold start times.
             if os.getenv("VERCEL") == "1" and "users" in table_names:
-                # Ensure description_embedding column exists before skipping
+                # Ensure description_embedding and status columns exist before skipping
                 if "jobs" in table_names:
                     jobs_columns = [c["name"] for c in inspector.get_columns("jobs")]
-                    if "description_embedding" in jobs_columns:
+                    if "description_embedding" in jobs_columns and "status" in jobs_columns:
                         print("MIGRATION: Skipping heavy startup DDL checks in serverless environment.")
                         return
             
@@ -59,6 +59,9 @@ def run_migrations():
                 if "description_embedding" not in columns:
                     conn.execute(text("ALTER TABLE jobs ADD COLUMN description_embedding JSON"))
                     print("MIGRATION: Added description_embedding column to jobs table.")
+                if "status" not in columns:
+                    conn.execute(text("ALTER TABLE jobs ADD COLUMN status VARCHAR DEFAULT 'open'"))
+                    print("MIGRATION: Added status column to jobs table.")
 
             if "applicants" in table_names:
                 columns = [c["name"] for c in inspector.get_columns("applicants")]
@@ -348,7 +351,8 @@ async def create_job(
         location=job_data.location,
         employment_type=job_data.employment_type,
         description=job_data.description,
-        priority_skills=job_data.priority_skills
+        priority_skills=job_data.priority_skills,
+        status=job_data.status or "open"
     )
     # Generate description embedding
     text_to_embed = f"{db_job.title}\n{db_job.priority_skills or ''}\n{db_job.description}"
@@ -391,6 +395,7 @@ async def update_job(
     job.employment_type = job_data.employment_type
     job.description = job_data.description
     job.priority_skills = job_data.priority_skills
+    job.status = job_data.status or "open"
     
     # Generate/Update description embedding
     text_to_embed = f"{job.title}\n{job.priority_skills or ''}\n{job.description}"

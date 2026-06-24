@@ -28,6 +28,7 @@ class Job(Base):
     description = Column(String, nullable=False)
     priority_skills = Column(String, nullable=True)  # Comma-separated list of priority skills
     description_embedding = Column(JSON, nullable=True)  # Stores 3072-dim list of floats
+    status = Column(String, default="open", nullable=True)  # "open" (ongoing) or "closed" (completed)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     # Relationship to user

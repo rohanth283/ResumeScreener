@@ -97,6 +97,50 @@
   border-color: rgba(26, 115, 232, 0.15);
 }
 
+.job-card-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 12px;
+  width: 100%;
+}
+
+.job-card-title-row h3 {
+  margin: 0 !important;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.4;
+  flex: 1;
+}
+
+.badge.status-ongoing {
+  background: rgba(24, 128, 56, 0.08) !important;
+  color: #188038 !important;
+  border-color: rgba(24, 128, 56, 0.25) !important;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.badge.status-completed {
+  background: var(--border) !important;
+  color: var(--text-muted) !important;
+  border-color: var(--border) !important;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.job-card.completed-job {
+  opacity: 0.75;
+  border-style: dashed;
+}
+
+.job-card.completed-job:hover {
+  opacity: 1;
+  border-style: solid;
+}
+
 .job-card-bottom {
   display: flex;
   justify-content: space-between;

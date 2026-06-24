@@ -33,6 +33,9 @@ export default function JobList({ jobs, onSelectJob, onCreateJobClick, isLoading
     );
   }
 
+  const openJobs = jobs.filter((j) => (j.status || 'open') === 'open');
+  const closedJobs = jobs.filter((j) => j.status === 'closed');
+
   return (
     <div className="job-dashboard">
       <div className="dashboard-header">
@@ -43,14 +46,17 @@ export default function JobList({ jobs, onSelectJob, onCreateJobClick, isLoading
       </div>
 
       <div className="jobs-grid">
-        {jobs.map((job) => (
+        {openJobs.map((job) => (
           <div
             key={job.id}
             className="job-card"
             onClick={() => onSelectJob(job)}
           >
             <div className="job-card-top">
-              <h3>{job.title}</h3>
+              <div className="job-card-title-row">
+                <h3>{job.title}</h3>
+                <span className="badge status-ongoing">Ongoing</span>
+              </div>
               <div className="job-badges">
                 {job.department && <span className="badge">{job.department}</span>}
                 {job.location && <span className="badge">{job.location}</span>}
@@ -81,6 +87,48 @@ export default function JobList({ jobs, onSelectJob, onCreateJobClick, isLoading
           </div>
         </div>
       </div>
+
+      {closedJobs.length > 0 && (
+        <div className="completed-positions-section" style={{ marginTop: '40px' }}>
+          <div className="dashboard-header">
+            <h2>Completed Positions</h2>
+          </div>
+
+          <div className="jobs-grid">
+            {closedJobs.map((job) => (
+              <div
+                key={job.id}
+                className="job-card completed-job"
+                onClick={() => onSelectJob(job)}
+              >
+                <div className="job-card-top">
+                  <div className="job-card-title-row">
+                    <h3>{job.title}</h3>
+                    <span className="badge status-completed">Completed</span>
+                  </div>
+                  <div className="job-badges">
+                    {job.department && <span className="badge">{job.department}</span>}
+                    {job.location && <span className="badge">{job.location}</span>}
+                    {job.employment_type && (
+                      <span className="badge employment-type">
+                        {job.employment_type}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                
+                <div className="job-card-bottom">
+                  <div className="candidate-count">
+                    <span className="count-number">{job.applicant_count || 0}</span>
+                    <span>{job.applicant_count === 1 ? 'Applicant' : 'Applicants'}</span>
+                  </div>
+                  <span className="view-link">View Details →</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

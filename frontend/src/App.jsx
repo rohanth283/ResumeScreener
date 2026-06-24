@@ -865,7 +865,12 @@ function App() {
               <button type="button" className="back-link" onClick={() => setActiveJob(null)}>
                 ← Back to Dashboard
               </button>
-              <h2>{activeJob.title}</h2>
+              <h2 style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                {activeJob.title}
+                <span className={`badge ${activeJob.status === 'closed' ? 'status-completed' : 'status-ongoing'}`}>
+                  {activeJob.status === 'closed' ? 'Completed' : 'Ongoing'}
+                </span>
+              </h2>
               <div className="job-badges">
                 {activeJob.department && <span className="badge">{activeJob.department}</span>}
                 {activeJob.location && <span className="badge">{activeJob.location}</span>}
@@ -878,6 +883,25 @@ function App() {
             </div>
             
             <div className="header-actions">
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => {
+                  const newStatus = activeJob.status === 'closed' ? 'open' : 'closed';
+                  handleEditJob(activeJob.id, {
+                    title: activeJob.title,
+                    department: activeJob.department,
+                    location: activeJob.location,
+                    employment_type: activeJob.employment_type,
+                    description: activeJob.description,
+                    priority_skills: activeJob.priority_skills,
+                    status: newStatus
+                  });
+                }}
+                style={{ marginRight: '8px' }}
+              >
+                {activeJob.status === 'closed' ? 'Mark as Ongoing' : 'Mark as Completed'}
+              </button>
               <button
                 type="button"
                 className="btn-secondary"

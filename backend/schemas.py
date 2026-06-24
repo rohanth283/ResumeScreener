@@ -43,6 +43,7 @@ class JobCreate(BaseModel):
     employment_type: Optional[str] = None  # Full-time, Part-time, Contract, etc.
     description: str
     priority_skills: Optional[str] = None  # Comma-separated list of priority skills
+    status: Optional[str] = "open"
 
 class JobResponse(BaseModel):
     id: int
@@ -52,6 +53,7 @@ class JobResponse(BaseModel):
     employment_type: Optional[str] = None
     description: str
     priority_skills: Optional[str] = None
+    status: Optional[str] = "open"
     created_at: datetime
     applicant_count: int
 

@@ -8,6 +8,7 @@ export default function NewJobModal({ onClose, onSubmit, loading, job = null }) 
   const [employmentType, setEmploymentType] = useState(job ? (job.employment_type || 'Full-time') : 'Full-time');
   const [description, setDescription] = useState(job ? job.description : '');
   const [prioritySkills, setPrioritySkills] = useState(job ? (job.priority_skills || '') : '');
+  const [status, setStatus] = useState(job ? (job.status || 'open') : 'open');
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -20,6 +21,7 @@ export default function NewJobModal({ onClose, onSubmit, loading, job = null }) 
       employment_type: employmentType,
       description: description.trim(),
       priority_skills: prioritySkills.trim() || null,
+      status: status,
     });
   };
 
@@ -84,6 +86,21 @@ export default function NewJobModal({ onClose, onSubmit, loading, job = null }) 
                 <option value="Internship">Internship</option>
               </select>
             </div>
+
+            {job && (
+              <div className="form-field form-field-full">
+                <label htmlFor="job-status">Recruitment Status</label>
+                <select
+                  id="job-status"
+                  value={status}
+                  onChange={(e) => setStatus(e.target.value)}
+                  disabled={loading}
+                >
+                  <option value="open">Ongoing (Active)</option>
+                  <option value="closed">Completed (Closed)</option>
+                </select>
+              </div>
+            )}
 
             <div className="form-field form-field-full">
               <label htmlFor="priority-skills">Priority Skills (comma-separated)</label>
