@@ -389,6 +389,10 @@ async def update_job(
             detail="Not authorized to update this job."
         )
     
+    # Avoid regenerating description embedding unless title, description, or priority skills changed
+    old_text = f"{job.title}\n{job.priority_skills or ''}\n{job.description}"
+    new_text = f"{job_data.title}\n{job_data.priority_skills or ''}\n{job_data.description}"
+
     job.title = job_data.title
     job.department = job_data.department
     job.location = job_data.location
@@ -397,12 +401,12 @@ async def update_job(
     job.priority_skills = job_data.priority_skills
     job.status = job_data.status or "open"
     
-    # Generate/Update description embedding
-    text_to_embed = f"{job.title}\n{job.priority_skills or ''}\n{job.description}"
-    try:
-        job.description_embedding = await get_embedding(text_to_embed)
-    except Exception as e:
-        print(f"Error updating job embedding: {e}")
+    if old_text != new_text or not job.description_embedding:
+        try:
+            job.description_embedding = await get_embedding(new_text)
+            print("UPDATE: Regenerated job description embedding.")
+        except Exception as e:
+            print(f"Error updating job embedding: {e}")
     
     db.commit()
     db.refresh(job)

@@ -408,6 +408,63 @@ function App() {
     }
   };
 
+  const handleToggleJobStatus = async (job) => {
+    const originalStatus = job.status || 'open';
+    const newStatus = originalStatus === 'closed' ? 'open' : 'closed';
+    
+    // Optimistic UI update: instantly update local state so the badge and toggle button flip with 0ms delay
+    const optimisticJob = { ...job, status: newStatus };
+    setJobs((prev) => prev.map((j) => (j.id === job.id ? optimisticJob : j)));
+    if (activeJob && activeJob.id === job.id) {
+      setActiveJob(optimisticJob);
+    }
+    
+    try {
+      const response = await fetch(`${API_URL}/jobs/${job.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          title: job.title,
+          department: job.department,
+          location: job.location,
+          employment_type: job.employment_type,
+          description: job.description,
+          priority_skills: job.priority_skills,
+          status: newStatus
+        }),
+      });
+      
+      if (response.status === 401) {
+        // Rollback state on auth error
+        setJobs((prev) => prev.map((j) => (j.id === job.id ? job : j)));
+        if (activeJob && activeJob.id === job.id) {
+          setActiveJob(job);
+        }
+        handleLogout();
+        return;
+      }
+      
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.detail || 'Could not update job status.');
+      
+      // Sync local state with actual server response data
+      setJobs((prev) => prev.map((j) => (j.id === job.id ? data : j)));
+      if (activeJob && activeJob.id === job.id) {
+        setActiveJob(data);
+      }
+    } catch (err) {
+      // Rollback state on network/API failure
+      setJobs((prev) => prev.map((j) => (j.id === job.id ? job : j)));
+      if (activeJob && activeJob.id === job.id) {
+        setActiveJob(job);
+      }
+      alert(err.message);
+    }
+  };
+
   const handleDeleteJob = async (jobId) => {
     if (!window.confirm('Are you sure you want to delete this job and all of its applicants?')) return;
     try {
@@ -886,18 +943,7 @@ function App() {
               <button
                 type="button"
                 className="btn-secondary"
-                onClick={() => {
-                  const newStatus = activeJob.status === 'closed' ? 'open' : 'closed';
-                  handleEditJob(activeJob.id, {
-                    title: activeJob.title,
-                    department: activeJob.department,
-                    location: activeJob.location,
-                    employment_type: activeJob.employment_type,
-                    description: activeJob.description,
-                    priority_skills: activeJob.priority_skills,
-                    status: newStatus
-                  });
-                }}
+                onClick={() => handleToggleJobStatus(activeJob)}
                 style={{ marginRight: '8px' }}
               >
                 {activeJob.status === 'closed' ? 'Mark as Ongoing' : 'Mark as Completed'}
