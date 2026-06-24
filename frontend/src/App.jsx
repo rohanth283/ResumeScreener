@@ -219,7 +219,6 @@ function App() {
       }));
       
       setAltMatchModalData(null);
-      alert(`Screening complete! Candidate scored ${newApp.match_score}% for ${applicant.best_alternative_job_title}. Switching views...`);
       handleSwitchToJobApplicant(targetJobId, newApp.id);
     } catch (err) {
       console.error(err);
