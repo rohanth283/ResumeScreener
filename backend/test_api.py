@@ -858,24 +858,60 @@ def test_get_all_applicants():
     job_a = client.post("/jobs", json={"title": "Software Eng", "department": "Engineering", "description": "Dev"}, headers=headers).json()
     job_b = client.post("/jobs", json={"title": "Sales Exec", "department": "Sales", "description": "Sell stuff"}, headers=headers).json()
 
-    # 3. Screen 1 candidate for Job A and 1 candidate for Job B
+    # 3. Screen 1 candidate (Alice) for Job A and 1 candidate (Bob) for Job B
+    # Let's mock screen_resume output specifically inside these scopes if needed,
+    # but the auto-fixture setup_db/mock_screen_resume already intercepts.
     resume_a = ("resume_a.txt", b"Candidate Alice. Software Eng.", "text/plain")
     res_a = client.post(f"/jobs/{job_a['id']}/screen", files={"resume_file": resume_a}, headers=headers)
     assert res_a.status_code == 200
+    alice_data = res_a.json()
+    # Ensure Alice has email
+    assert alice_data["email"] == "john.doe@example.com" # from mock_screen_resume
 
     resume_b = ("resume_b.txt", b"Candidate Bob. Sales Exec.", "text/plain")
     res_b = client.post(f"/jobs/{job_b['id']}/screen", files={"resume_file": resume_b}, headers=headers)
     assert res_b.status_code == 200
+    bob_data = res_b.json()
+    # Force Bob to have a different email to prevent mock collision
+    db_sess = next(override_get_db())
+    bob_db = db_sess.query(models.Applicant).filter(models.Applicant.id == bob_data["id"]).first()
+    bob_db.email = "bob.marley@example.com"
+    db_sess.commit()
 
-    # 4. Fetch all applicants across all jobs
+    # 4. Fetch all applicants across all jobs (currently 2 unique candidates)
     res_all = client.get("/applicants", headers=headers)
     assert res_all.status_code == 200
     all_applicants = res_all.json()
     assert len(all_applicants) == 2
 
-    # Check order and fields
-    assert all_applicants[0]["job_title"] in ["Software Eng", "Sales Exec"]
-    assert all_applicants[0]["job_department"] in ["Engineering", "Sales"]
+    # 5. Screen candidate Alice for Job B as well (creating a duplicate email: john.doe@example.com)
+    # Give this duplicate application a different score (e.g. 95 instead of 85)
+    resume_a_dup = ("resume_a_dup.txt", b"Candidate Alice. Software Eng duplicate.", "text/plain")
+    # Our mock_screen_resume assigns score 95 if priority_skills is present in job, but we can also just update DB score directly.
+    res_a_dup = client.post(f"/jobs/{job_b['id']}/screen", files={"resume_file": resume_a_dup}, headers=headers)
+    assert res_a_dup.status_code == 200
+    alice_dup_data = res_a_dup.json()
+    assert alice_dup_data["email"] == "john.doe@example.com"
+
+    # Set mock scores to distinct values
+    db_sess = next(override_get_db())
+    a1 = db_sess.query(models.Applicant).filter(models.Applicant.id == alice_data["id"]).first()
+    a1.match_score = 80
+    a2 = db_sess.query(models.Applicant).filter(models.Applicant.id == alice_dup_data["id"]).first()
+    a2.match_score = 90  # Higher score
+    db_sess.commit()
+
+    # 6. Fetch all applicants again and check if duplicate email was filtered out, keeping the higher score (90)
+    res_all_dup = client.get("/applicants", headers=headers)
+    assert res_all_dup.status_code == 200
+    all_applicants_dup = res_all_dup.json()
+    
+    # Assert size is still 2 (Alice and Bob) instead of 3
+    assert len(all_applicants_dup) == 2
+    
+    # Assert the returned record for Alice has the higher score (90)
+    alice_result = next(x for x in all_applicants_dup if x["email"] == "john.doe@example.com")
+    assert alice_result["match_score"] == 90
 
 
 

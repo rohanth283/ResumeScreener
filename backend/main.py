@@ -530,11 +530,35 @@ def get_all_applicants(
         models.Job.user_id == current_user.id
     ).order_by(models.Applicant.created_at.desc()).all()
     
+    # Deduplicate candidates by email address case-insensitively, keeping the one with the highest match score (or most recent as fallback)
+    seen = {}
     for app in applicants:
         setattr(app, "job_title", app.job.title)
         setattr(app, "job_department", app.job.department)
         
-    return applicants
+        email_key = app.email.strip().lower() if app.email else ""
+        if not email_key or email_key == "unknown@example.com":
+            # For empty or unknown emails, do not deduplicate (treat as distinct candidates)
+            unique_key = f"unknown_{app.id}"
+        else:
+            unique_key = email_key
+            
+        if unique_key not in seen:
+            seen[unique_key] = app
+        else:
+            existing = seen[unique_key]
+            existing_score = existing.match_score or 0
+            new_score = app.match_score or 0
+            # Keep the application with the higher match score.
+            # If scores are equal, keep the most recent one (already processed first due to order_by(created_at.desc()))
+            if new_score > existing_score:
+                seen[unique_key] = app
+
+    # Convert to list and sort by created_at desc to preserve overall recency
+    deduplicated = list(seen.values())
+    deduplicated.sort(key=lambda x: x.created_at, reverse=True)
+    
+    return deduplicated
 
 
 @app.get("/jobs/{job_id}/applicants", response_model=list[schemas.ApplicantResponse])
