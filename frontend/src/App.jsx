@@ -89,8 +89,6 @@ function App() {
   const [debouncedSearchName, setDebouncedSearchName] = useState('');
   const [selectedPosition, setSelectedPosition] = useState('');
   const [filterDate, setFilterDate] = useState('');
-  const [semanticQuery, setSemanticQuery] = useState('');
-  const [debouncedSemanticQuery, setDebouncedSemanticQuery] = useState('');
 
   // Debounce searchName input
   useEffect(() => {
@@ -99,32 +97,6 @@ function App() {
     }, 300);
     return () => clearTimeout(handler);
   }, [searchName]);
-
-  // Debounce semanticQuery input
-  useEffect(() => {
-    const handler = setTimeout(() => {
-      setDebouncedSemanticQuery(semanticQuery);
-    }, 400);
-    return () => clearTimeout(handler);
-  }, [semanticQuery]);
-
-  // Enforce mutually exclusive filtering: typing semantic query clears keyword filters, and vice-versa
-  const handleSemanticQueryChange = (val) => {
-    setSemanticQuery(val);
-    if (val.trim() !== '') {
-      setSearchName('');
-      setSelectedDept('');
-      setSelectedPosition('');
-      setFilterDate('');
-    }
-  };
-
-  const handleFilterChange = (setter, val) => {
-    setter(val);
-    if (val !== '') {
-      setSemanticQuery('');
-    }
-  };
 
   // Unique departments for filtering (computed from the jobs list to avoid dependency on dynamic candidates)
   const uniqueDepartments = useMemo(() => {
@@ -234,12 +206,11 @@ function App() {
     }
   };
 
-  const fetchAllApplicants = async (queryString = '', isSearch = false) => {
+  const fetchAllApplicants = async (queryString = '') => {
     setAllApplicantsLoading(true);
     setError(null);
     try {
-      const base = isSearch ? '/applicants/search' : '/applicants';
-      const url = `${API_URL}${base}${queryString ? `?${queryString}` : ''}`;
+      const url = `${API_URL}/applicants${queryString ? `?${queryString}` : ''}`;
       const response = await fetch(url, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -258,22 +229,18 @@ function App() {
     }
   };
 
-  // Trigger fetchAllApplicants when filters change (using debounced name/semantic search)
+  // Trigger fetchAllApplicants when filters change (using debounced name)
   useEffect(() => {
     if (token && user && showAllApplicants) {
       const params = new URLSearchParams();
-      if (debouncedSemanticQuery) {
-        params.append('query', debouncedSemanticQuery);
-        fetchAllApplicants(params.toString(), true);
-      } else {
-        if (debouncedSearchName) params.append('name', debouncedSearchName);
-        if (selectedPosition) params.append('position', selectedPosition);
-        if (selectedDept) params.append('dept', selectedDept);
-        if (filterDate) params.append('date', filterDate);
-        fetchAllApplicants(params.toString(), false);
-      }
+      if (debouncedSearchName) params.append('name', debouncedSearchName);
+      if (selectedPosition) params.append('position', selectedPosition);
+      if (selectedDept) params.append('dept', selectedDept);
+      if (filterDate) params.append('date', filterDate);
+      
+      fetchAllApplicants(params.toString());
     }
-  }, [token, user, showAllApplicants, debouncedSemanticQuery, debouncedSearchName, selectedPosition, selectedDept, filterDate]);
+  }, [token, user, showAllApplicants, debouncedSearchName, selectedPosition, selectedDept, filterDate]);
 
   const handleViewAllCandidates = () => {
     setShowAllApplicants(true);
@@ -281,7 +248,6 @@ function App() {
     setSearchName('');
     setSelectedPosition('');
     setFilterDate('');
-    setSemanticQuery('');
   };
 
   const handleBackToDashboard = () => {
@@ -1104,17 +1070,6 @@ function App() {
             </div>
 
             <div className="filter-bar">
-              <div className="filter-group" style={{ flex: '1 1 200px' }}>
-                <span className="filter-label">Semantic Match (AI):</span>
-                <input
-                  type="text"
-                  className="filter-input"
-                  placeholder="e.g. Cloud architect who knows Go..."
-                  value={semanticQuery}
-                  onChange={(e) => handleSemanticQueryChange(e.target.value)}
-                />
-              </div>
-
               <div className="filter-group">
                 <span className="filter-label">Search Name:</span>
                 <input
@@ -1122,7 +1077,7 @@ function App() {
                   className="filter-input"
                   placeholder="Type to search..."
                   value={searchName}
-                  onChange={(e) => handleFilterChange(setSearchName, e.target.value)}
+                  onChange={(e) => setSearchName(e.target.value)}
                 />
               </div>
               
@@ -1131,7 +1086,7 @@ function App() {
                 <select
                   className="filter-select"
                   value={selectedDept}
-                  onChange={(e) => handleFilterChange(setSelectedDept, e.target.value)}
+                  onChange={(e) => setSelectedDept(e.target.value)}
                 >
                   <option value="">All Departments</option>
                   {uniqueDepartments.map((dept) => (
@@ -1145,7 +1100,7 @@ function App() {
                 <select
                   className="filter-select"
                   value={selectedPosition}
-                  onChange={(e) => handleFilterChange(setSelectedPosition, e.target.value)}
+                  onChange={(e) => setSelectedPosition(e.target.value)}
                 >
                   <option value="">All Positions</option>
                   {uniquePositions.map((pos) => (
@@ -1157,7 +1112,7 @@ function App() {
                 <span className="filter-label">Screened Since:</span>
                 <DatePicker
                   value={filterDate}
-                  onChange={(val) => handleFilterChange(setFilterDate, val)}
+                  onChange={setFilterDate}
                   placeholder="Select Date"
                 />
               </div>
@@ -1235,15 +1190,9 @@ function App() {
                               </span>
                             </td>
                             <td>
-                              {app.semantic_score !== undefined && app.semantic_score !== null ? (
-                                <span className="score-badge-pill excellent" title="AI Semantic Relevance Match">
-                                  🎯 {app.semantic_score}%
-                                </span>
-                              ) : (
-                                <span className={`score-badge-pill ${scoreClass}`}>
-                                  {app.match_score}%
-                                </span>
-                              )}
+                              <span className={`score-badge-pill ${scoreClass}`}>
+                                {app.match_score}%
+                              </span>
                             </td>
                             <td>{app.resume_filename}</td>
                             <td>{ensureUtcDate(app.created_at).toLocaleDateString()}</td>

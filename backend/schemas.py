@@ -85,7 +85,6 @@ class ApplicantResponse(BaseModel):
     job_title: Optional[str] = None
     job_department: Optional[str] = None
     created_at: datetime
-    semantic_score: Optional[float] = None
 
     class Config:
         from_attributes = True

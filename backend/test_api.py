@@ -963,35 +963,6 @@ def test_get_all_applicants():
     assert len(res_filter_date_future.json()) == 0
 
 
-def test_semantic_search_applicants():
-    # 1. Sign up/login user
-    signup_payload = {"email": "tester_semantic_search@example.com", "password": "password123", "name": "Tester Semantic"}
-    res = client.post("/auth/signup", json=signup_payload)
-    assert res.status_code == 200
-    token = res.json()["access_token"]
-    headers = {"Authorization": f"Bearer {token}"}
-
-    # 2. Create Job
-    job = client.post("/jobs", json={"title": "Go Developer", "description": "Needs Golang expert"}, headers=headers).json()
-
-    # 3. Screen a candidate
-    resume = ("resume.txt", b"Candidate who knows Go very well.", "text/plain")
-    res_screen = client.post(f"/jobs/{job['id']}/screen", files={"resume_file": resume}, headers=headers)
-    assert res_screen.status_code == 200
-    app_data = res_screen.json()
-
-    # 4. Search semantically
-    res_search = client.get("/applicants/search?query=Golang", headers=headers)
-    assert res_search.status_code == 200
-    search_results = res_search.json()
-    
-    # Assert candidate is returned and contains semantic_score
-    assert len(search_results) == 1
-    assert search_results[0]["email"] == app_data["email"]
-    assert "semantic_score" in search_results[0]
-    assert search_results[0]["semantic_score"] is not None
-
-
 
 
 
