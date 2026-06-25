@@ -873,10 +873,14 @@ def test_get_all_applicants():
     res_b = client.post(f"/jobs/{job_b['id']}/screen", files={"resume_file": resume_b}, headers=headers)
     assert res_b.status_code == 200
     bob_data = res_b.json()
-    # Force Bob to have a different email to prevent mock collision
+    # Force Bob to have a different email and name to prevent mock collision, and set Alice's name
     db_sess = next(override_get_db())
     bob_db = db_sess.query(models.Applicant).filter(models.Applicant.id == bob_data["id"]).first()
     bob_db.email = "bob.marley@example.com"
+    bob_db.name = "Bob Marley"
+    
+    alice_db = db_sess.query(models.Applicant).filter(models.Applicant.id == alice_data["id"]).first()
+    alice_db.name = "Alice Smith"
     db_sess.commit()
 
     # 4. Fetch all applicants across all jobs (currently 2 unique candidates)
@@ -902,11 +906,11 @@ def test_get_all_applicants():
     
     a2 = db_sess.query(models.Applicant).filter(models.Applicant.id == alice_dup_data["id"]).first()
     a2.match_score = 80  # Lower score
+    a2.name = "Alice Smith"
     a2.created_at = datetime.datetime.utcnow() # Newer date
     db_sess.commit()
 
-    # 6. Fetch all applicants again and check if duplicate email was filtered out, keeping the higher score (90)
-    # but using the last (most recent) screened date (a2's created_at).
+    # 6. Fetch all applicants again and check if duplicate email was filtered out, keeping the most recent screening completely (score 80)
     res_all_dup = client.get("/applicants", headers=headers)
     assert res_all_dup.status_code == 200
     all_applicants_dup = res_all_dup.json()
@@ -914,13 +918,49 @@ def test_get_all_applicants():
     # Assert size is still 2 (Alice and Bob) instead of 3
     assert len(all_applicants_dup) == 2
     
-    # Assert the returned record for Alice has the higher score (90)
+    # Assert the returned record for Alice is the most recent one (score 80)
     alice_result = next(x for x in all_applicants_dup if x["email"] == "john.doe@example.com")
-    assert alice_result["match_score"] == 90
+    assert alice_result["match_score"] == 80
     
-    # Assert it has the last screened date (which matches a2's created_at, or is after a1's created_at)
+    # Assert it has the last screened date (which matches a2's created_at)
     returned_dt = datetime.datetime.fromisoformat(alice_result["created_at"].replace("Z", ""))
     assert returned_dt > datetime.datetime.utcnow() - datetime.timedelta(minutes=5)
+
+    # 7. Test server-side filtering
+    # A. Filter by name "Alice" (case-insensitive)
+    res_filter_name = client.get("/applicants?name=alice", headers=headers)
+    assert res_filter_name.status_code == 200
+    assert len(res_filter_name.json()) == 1
+    assert res_filter_name.json()[0]["email"] == "john.doe@example.com"
+
+    # B. Filter by position "Sales Exec"
+    res_filter_pos = client.get("/applicants?position=Sales%20Exec", headers=headers)
+    assert res_filter_pos.status_code == 200
+    # Both Alice's latest screening and Bob's screening are for Job B ("Sales Exec")
+    assert len(res_filter_pos.json()) == 2
+
+    # C. Filter by dept "Sales"
+    res_filter_dept = client.get("/applicants?dept=Sales", headers=headers)
+    assert res_filter_dept.status_code == 200
+    assert len(res_filter_dept.json()) == 2
+
+    # D. Filter by dept "Engineering"
+    res_filter_dept_eng = client.get("/applicants?dept=Engineering", headers=headers)
+    assert res_filter_dept_eng.status_code == 200
+    # Alice's latest is Sales, so 0 applicants are under Engineering now
+    assert len(res_filter_dept_eng.json()) == 0
+
+    # E. Filter by date (today)
+    today_str = datetime.date.today().isoformat()
+    res_filter_date = client.get(f"/applicants?date={today_str}", headers=headers)
+    assert res_filter_date.status_code == 200
+    assert len(res_filter_date.json()) == 2
+
+    # F. Filter by date in future
+    future_date_str = (datetime.date.today() + datetime.timedelta(days=1)).isoformat()
+    res_filter_date_future = client.get(f"/applicants?date={future_date_str}", headers=headers)
+    assert res_filter_date_future.status_code == 200
+    assert len(res_filter_date_future.json()) == 0
 
 
 

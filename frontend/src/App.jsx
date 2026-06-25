@@ -86,62 +86,39 @@ function App() {
   const [allApplicantsLoading, setAllApplicantsLoading] = useState(false);
   const [selectedDept, setSelectedDept] = useState('');
   const [searchName, setSearchName] = useState('');
+  const [debouncedSearchName, setDebouncedSearchName] = useState('');
   const [selectedPosition, setSelectedPosition] = useState('');
   const [filterDate, setFilterDate] = useState('');
 
-  // Unique departments for filtering
+  // Debounce searchName input
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearchName(searchName);
+    }, 300);
+    return () => clearTimeout(handler);
+  }, [searchName]);
+
+  // Unique departments for filtering (computed from the jobs list to avoid dependency on dynamic candidates)
   const uniqueDepartments = useMemo(() => {
     const depts = new Set();
-    allApplicants.forEach(app => {
-      if (app.job_department) {
-        depts.add(app.job_department.trim());
+    jobs.forEach(job => {
+      if (job.department) {
+        depts.add(job.department.trim());
       }
     });
     return Array.from(depts).sort();
-  }, [allApplicants]);
+  }, [jobs]);
 
-  // Unique positions for filtering
+  // Unique positions for filtering (computed from the jobs list)
   const uniquePositions = useMemo(() => {
     const titles = new Set();
-    allApplicants.forEach(app => {
-      if (app.job_title) {
-        titles.add(app.job_title.trim());
+    jobs.forEach(job => {
+      if (job.title) {
+        titles.add(job.title.trim());
       }
     });
     return Array.from(titles).sort();
-  }, [allApplicants]);
-
-  // Filtered all applicants dynamically
-  const filteredAllApplicants = useMemo(() => {
-    return allApplicants.filter(app => {
-      // 1. Department filter
-      if (selectedDept && (app.job_department || '').trim().toLowerCase() !== selectedDept.trim().toLowerCase()) {
-        return false;
-      }
-      // 2. Name filter
-      if (searchName && !(app.name || '').toLowerCase().includes(searchName.toLowerCase())) {
-        return false;
-      }
-      // 3. Position filter
-      if (selectedPosition && (app.job_title || '').trim().toLowerCase() !== selectedPosition.trim().toLowerCase()) {
-        return false;
-      }
-      // 4. Date filter (screened on or after selected date)
-      if (filterDate) {
-        const appDate = ensureUtcDate(app.created_at);
-        const filterTarget = new Date(filterDate + 'T00:00:00Z');
-        if (appDate) {
-          const appDateMidnight = new Date(Date.UTC(appDate.getUTCFullYear(), appDate.getUTCMonth(), appDate.getUTCDate()));
-          if (appDateMidnight < filterTarget) {
-            return false;
-          }
-        } else {
-          return false;
-        }
-      }
-      return true;
-    });
-  }, [allApplicants, selectedDept, searchName, selectedPosition, filterDate]);
+  }, [jobs]);
 
   // Modals & Drawer State
   const [isNewJobModalOpen, setIsNewJobModalOpen] = useState(false);
@@ -229,11 +206,12 @@ function App() {
     }
   };
 
-  const fetchAllApplicants = async () => {
+  const fetchAllApplicants = async (queryString = '') => {
     setAllApplicantsLoading(true);
     setError(null);
     try {
-      const response = await fetch(`${API_URL}/applicants`, {
+      const url = `${API_URL}/applicants${queryString ? `?${queryString}` : ''}`;
+      const response = await fetch(url, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (response.status === 401) {
@@ -251,13 +229,25 @@ function App() {
     }
   };
 
+  // Trigger fetchAllApplicants when filters change (using debounced name)
+  useEffect(() => {
+    if (token && user && showAllApplicants) {
+      const params = new URLSearchParams();
+      if (debouncedSearchName) params.append('name', debouncedSearchName);
+      if (selectedPosition) params.append('position', selectedPosition);
+      if (selectedDept) params.append('dept', selectedDept);
+      if (filterDate) params.append('date', filterDate);
+      
+      fetchAllApplicants(params.toString());
+    }
+  }, [token, user, showAllApplicants, debouncedSearchName, selectedPosition, selectedDept, filterDate]);
+
   const handleViewAllCandidates = () => {
     setShowAllApplicants(true);
     setSelectedDept('');
     setSearchName('');
     setSelectedPosition('');
     setFilterDate('');
-    fetchAllApplicants();
   };
 
   const handleBackToDashboard = () => {
@@ -1070,7 +1060,7 @@ function App() {
                 <h2 style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                   Entire Candidate List
                   <span className="badge" style={{ backgroundColor: 'var(--primary)', color: 'white' }}>
-                    {filteredAllApplicants.length} Screened
+                    {allApplicants.length} Screened
                   </span>
                 </h2>
                 <p style={{ margin: '4px 0 0', color: 'var(--text-muted)' }}>
@@ -1140,7 +1130,7 @@ function App() {
                   <span className="loading-spinner" />
                   <p>Loading candidate list...</p>
                 </div>
-              ) : filteredAllApplicants.length === 0 ? (
+              ) : allApplicants.length === 0 ? (
                 <div className="empty-applicants">
                   <p>No candidates match the selected criteria.</p>
                 </div>
@@ -1161,7 +1151,7 @@ function App() {
                       </tr>
                     </thead>
                     <tbody>
-                      {filteredAllApplicants.map((app, index) => {
+                      {allApplicants.map((app, index) => {
                         const scoreClass = app.match_score >= 80 ? 'excellent' : app.match_score >= 60 ? 'good' : 'poor';
                         return (
                           <tr

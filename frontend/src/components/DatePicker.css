@@ -12,9 +12,7 @@
 
 .datepicker-display-input {
   padding-right: 50px !important;
-  cursor: pointer;
-  caret-color: transparent;
-  user-select: none;
+  cursor: text;
 }
 
 .input-calendar-icon {
@@ -160,8 +158,7 @@
 .datepicker-day.sibling-month {
   color: var(--border);
   opacity: 0.4;
-  cursor: default;
-  pointer-events: none;
+  cursor: pointer;
 }
 
 .datepicker-day.selected {

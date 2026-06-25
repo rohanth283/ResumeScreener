@@ -520,57 +520,78 @@ def attach_best_alternative_matches(applicants: list[models.Applicant], db: Sess
 
 @app.get("/applicants", response_model=list[schemas.ApplicantResponse])
 def get_all_applicants(
+    name: Optional[str] = Query(None),
+    position: Optional[str] = Query(None),
+    dept: Optional[str] = Query(None),
+    date: Optional[str] = Query(None),
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    # Eager load the parent job info to prevent N+1 query latency
-    applicants = db.query(models.Applicant).join(models.Job).options(
-        joinedload(models.Applicant.job)
+    import sqlalchemy
+    from sqlalchemy.orm import joinedload
+    
+    # 1. Define the SQL-level expression to isolate the unique candidate key
+    # Empty, null, or unknown@example.com emails are treated as distinct candidates using their ID
+    email_expr = sqlalchemy.case(
+        (
+            (models.Applicant.email == None) | 
+            (func.trim(models.Applicant.email) == "") | 
+            (func.lower(func.trim(models.Applicant.email)) == "unknown@example.com"),
+            "unknown_" + func.cast(models.Applicant.id, sqlalchemy.String)
+        ),
+        else_=func.lower(func.trim(models.Applicant.email))
+    )
+    
+    # 2. Build the ranking subquery to deduplicate in SQL (Option 1: keep most recent screening record completely)
+    subq = db.query(
+        models.Applicant.id.label("app_id"),
+        func.row_number().over(
+            partition_by=email_expr,
+            order_by=[models.Applicant.created_at.desc(), models.Applicant.id.desc()]
+        ).label("rank")
+    ).join(
+        models.Job
     ).filter(
         models.Job.user_id == current_user.id
-    ).order_by(models.Applicant.created_at.desc()).all()
+    ).subquery()
     
-    # Deduplicate candidates by email address case-insensitively, keeping the one with the highest match score,
-    # but use the last (most recent) screened date (created_at) across all screenings.
-    seen = {}
-    latest_dates = {}
+    # 3. Main query selecting deduplicated rank 1 records, eager loading parent job
+    query = db.query(models.Applicant).join(
+        subq, models.Applicant.id == subq.c.app_id
+    ).filter(
+        subq.c.rank == 1
+    ).join(
+        models.Job
+    ).options(
+        joinedload(models.Applicant.job)
+    )
+    
+    # 4. Apply optional search & filter conditions
+    if name:
+        query = query.filter(models.Applicant.name.ilike(f"%{name}%"))
+    if position:
+        query = query.filter(models.Job.title.ilike(f"%{position}%"))
+    if dept:
+        query = query.filter(models.Job.department.ilike(f"%{dept}%"))
+    if date:
+        try:
+            from datetime import datetime
+            filter_dt = datetime.strptime(date, "%Y-%m-%d")
+            query = query.filter(models.Applicant.created_at >= filter_dt)
+        except ValueError:
+            pass
+            
+    # 5. Order the final results by created_at DESC (which is the most recent date of the candidate's screening)
+    applicants = query.order_by(models.Applicant.created_at.desc()).all()
+    
+    # 6. Map to schemas and populate job fields
+    deduplicated = []
     for app in applicants:
         setattr(app, "job_title", app.job.title)
         setattr(app, "job_department", app.job.department)
-        
-        email_key = app.email.strip().lower() if app.email else ""
-        if not email_key or email_key == "unknown@example.com":
-            # For empty or unknown emails, do not deduplicate (treat as distinct candidates)
-            unique_key = f"unknown_{app.id}"
-        else:
-            unique_key = email_key
-            
-        # Since applicants are ordered by created_at.desc(), the first time we see unique_key,
-        # it has the most recent created_at date.
-        if unique_key not in latest_dates:
-            latest_dates[unique_key] = app.created_at
-            
-        if unique_key not in seen:
-            seen[unique_key] = app
-        else:
-            existing = seen[unique_key]
-            existing_score = existing.match_score or 0
-            new_score = app.match_score or 0
-            # Keep the application with the higher match score.
-            if new_score > existing_score:
-                seen[unique_key] = app
-
-    # Convert to Pydantic DTO instances to prevent modifying managed database session state
-    deduplicated = []
-    for unique_key, app in seen.items():
         dto = schemas.ApplicantResponse.model_validate(app)
-        if unique_key in latest_dates:
-            dto.created_at = latest_dates[unique_key]
         deduplicated.append(dto)
-
-    # Sort by created_at desc to preserve overall recency
-    deduplicated.sort(key=lambda x: x.created_at, reverse=True)
-    
+        
     return deduplicated
 
 
