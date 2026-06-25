@@ -128,11 +128,14 @@ function App() {
       }
       // 4. Date filter (screened on or after selected date)
       if (filterDate) {
-        const appDate = new Date(app.created_at);
-        const filterTarget = new Date(filterDate);
-        appDate.setHours(0, 0, 0, 0);
-        filterTarget.setHours(0, 0, 0, 0);
-        if (appDate < filterTarget) {
+        const appDate = ensureUtcDate(app.created_at);
+        const filterTarget = new Date(filterDate + 'T00:00:00Z');
+        if (appDate) {
+          const appDateMidnight = new Date(Date.UTC(appDate.getUTCFullYear(), appDate.getUTCMonth(), appDate.getUTCDate()));
+          if (appDateMidnight < filterTarget) {
+            return false;
+          }
+        } else {
           return false;
         }
       }
@@ -1183,7 +1186,7 @@ function App() {
                               <div className="candidate-name-cell">
                                 {app.name || 'Unknown Candidate'}
                                 {app.is_reviewed && (
-                                  <span className="reviewed-checkmark-badge" title="Manually Audited & Reviewed" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                                  <span className="reviewed-checkmark-badge flex-icon-align" title="Manually Audited & Reviewed">
                                     <CheckIcon size={10} /> Reviewed
                                   </span>
                                 )}
@@ -1333,20 +1336,20 @@ function App() {
           <div className="tab-navigation">
             <button
               type="button"
-              className={`tab-button ${activeTab === 'candidates' ? 'active' : ''}`}
+              className={`tab-button ${activeTab === 'candidates' ? 'active' : ''} flex-icon-align`}
               onClick={() => setActiveTab('candidates')}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', justifyContent: 'center' }}
+              style={{ justifyContent: 'center' }}
             >
               <UsersIcon size={14} /> Candidates
             </button>
             <button
               type="button"
-              className={`tab-button ${activeTab === 'emails' ? 'active' : ''}`}
+              className={`tab-button ${activeTab === 'emails' ? 'active' : ''} flex-icon-align`}
               onClick={() => {
                 setActiveTab('emails');
                 fetchEmailsHistory(activeJob.id);
               }}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', justifyContent: 'center' }}
+              style={{ justifyContent: 'center' }}
             >
               <MailIcon size={14} /> Email History
             </button>
@@ -1493,7 +1496,7 @@ function App() {
                               <div className="candidate-name-cell">
                                 {app.name || 'Unknown Candidate'}
                                 {app.is_reviewed && (
-                                  <span className="reviewed-checkmark-badge" title="Manually Audited & Reviewed" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                                  <span className="reviewed-checkmark-badge flex-icon-align" title="Manually Audited & Reviewed">
                                     <CheckIcon size={10} /> Reviewed
                                   </span>
                                 )}

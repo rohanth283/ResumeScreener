@@ -1066,3 +1066,12 @@
   cursor: pointer;
 }
 
+/* Shared utility class for align icons inside flex wrappers */
+.flex-icon-align {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  vertical-align: middle;
+}
+
+

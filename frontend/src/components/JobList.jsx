@@ -42,7 +42,7 @@ export default function JobList({ jobs, onSelectJob, onCreateJobClick, onViewAll
       <div className="dashboard-header">
         <h2>Active Positions</h2>
         <div style={{ display: 'flex', gap: '12px' }}>
-          <button type="button" className="btn-secondary" onClick={onViewAllCandidatesClick} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+          <button type="button" className="btn-secondary flex-icon-align" onClick={onViewAllCandidatesClick}>
             <UsersIcon size={14} /> Entire Candidate List
           </button>
           <button type="button" className="add-job-btn" onClick={onCreateJobClick}>

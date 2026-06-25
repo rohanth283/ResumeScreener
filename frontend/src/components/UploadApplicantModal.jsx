@@ -89,12 +89,12 @@ export default function UploadApplicantModal({
             <div className="progress-list">
               {uploadProgress.files.map((file, i) => (
                 <div key={i} className="progress-item">
-                  <span className="progress-file-name" title={file.name} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                  <span className="progress-file-name flex-icon-align" title={file.name}>
                     <FileIcon size={14} /> {file.name}
                   </span>
                   <span className={`status-badge ${file.status}`}>
                     {file.status === 'pending' && (
-                      <span className="badge-text pending" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                      <span className="badge-text pending flex-icon-align">
                         <HourglassIcon size={12} /> Pending
                       </span>
                     )}
@@ -104,12 +104,12 @@ export default function UploadApplicantModal({
                       </span>
                     )}
                     {file.status === 'success' && (
-                      <span className="badge-text success" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                      <span className="badge-text success flex-icon-align">
                         <CheckCircleIcon size={12} /> Complete
                       </span>
                     )}
                     {file.status === 'error' && (
-                      <span className="badge-text error" title={file.errorMsg} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                      <span className="badge-text error flex-icon-align" title={file.errorMsg}>
                         <XCircleIcon size={12} /> Failed
                       </span>
                     )}
@@ -154,7 +154,7 @@ export default function UploadApplicantModal({
                 <div className="selected-files-list">
                   {selectedFiles.map((file, idx) => (
                     <div key={idx} className="selected-file-item">
-                      <span className="file-item-name" title={file.name} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                      <span className="file-item-name flex-icon-align" title={file.name}>
                         <FileIcon size={14} /> {file.name}
                       </span>
                       <button 

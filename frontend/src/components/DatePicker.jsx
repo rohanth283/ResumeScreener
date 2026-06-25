@@ -5,8 +5,11 @@ export default function DatePicker({ value, onChange, placeholder = 'Select Date
   const [isOpen, setIsOpen] = useState(false);
   const [viewDate, setViewDate] = useState(() => {
     if (value) {
-      const d = new Date(value);
-      if (!isNaN(d.getTime())) return d;
+      const parts = value.split('-');
+      if (parts.length === 3) {
+        const d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+        if (!isNaN(d.getTime())) return d;
+      }
     }
     return new Date();
   });
@@ -26,9 +29,12 @@ export default function DatePicker({ value, onChange, placeholder = 'Select Date
   // Sync view date if input value changes
   useEffect(() => {
     if (value) {
-      const d = new Date(value);
-      if (!isNaN(d.getTime())) {
-        setViewDate(d);
+      const parts = value.split('-');
+      if (parts.length === 3) {
+        const d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+        if (!isNaN(d.getTime())) {
+          setViewDate(d);
+        }
       }
     }
   }, [value]);
@@ -97,20 +103,33 @@ export default function DatePicker({ value, onChange, placeholder = 'Select Date
   // Selected date details
   let selectedYear, selectedMonth, selectedDay;
   if (value) {
-    const sDate = new Date(value);
-    if (!isNaN(sDate.getTime())) {
-      selectedYear = sDate.getFullYear();
-      selectedMonth = sDate.getMonth();
-      selectedDay = sDate.getDate();
+    const parts = value.split('-');
+    if (parts.length === 3) {
+      selectedYear = parseInt(parts[0], 10);
+      selectedMonth = parseInt(parts[1], 10) - 1;
+      selectedDay = parseInt(parts[2], 10);
     }
   }
 
-  // Generate list of years for selection dropdown (from 10 years ago to 5 years in future)
+  // Generate list of years for selection dropdown (from 20 years ago to 2 years in future)
   const currentYear = new Date().getFullYear();
   const years = [];
-  for (let y = currentYear - 10; y <= currentYear + 5; y++) {
+  for (let y = currentYear - 20; y <= currentYear + 2; y++) {
     years.push(y);
   }
+
+  // Timezone-safe date string formatter for input display
+  const formatDateString = (dateStr) => {
+    if (!dateStr) return '';
+    const parts = dateStr.split('-');
+    if (parts.length === 3) {
+      const yVal = parseInt(parts[0], 10);
+      const mVal = parseInt(parts[1], 10) - 1;
+      const dVal = parseInt(parts[2], 10);
+      return new Date(yVal, mVal, dVal).toLocaleDateString();
+    }
+    return '';
+  };
 
   // SVG Icons
   const CalendarIcon = () => (
@@ -136,7 +155,7 @@ export default function DatePicker({ value, onChange, placeholder = 'Select Date
           type="text"
           className="filter-input datepicker-display-input"
           placeholder={placeholder}
-          value={value ? new Date(value).toLocaleDateString() : ''}
+          value={formatDateString(value)}
           readOnly
         />
         <CalendarIcon />

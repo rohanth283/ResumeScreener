@@ -133,7 +133,7 @@ export default function AnalysisDrawer({ isOpen, onClose, applicant, onRescreen,
               <p>{applicant.email}</p>
               <span className="drawer-file-label">Resume File</span>
               <div className="meta-filename-row">
-                <span className="meta-filename" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                <span className="meta-filename flex-icon-align">
                   <FileIcon size={14} /> {applicant.resume_filename}
                 </span>
                 <div className="meta-actions">
@@ -325,7 +325,7 @@ export default function AnalysisDrawer({ isOpen, onClose, applicant, onRescreen,
           ) : (
             <div className="resume-viewer-tab" style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: '500px' }}>
               <div className="resume-viewer-header">
-                <span className="file-info" title={applicant.resume_filename} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                <span className="file-info flex-icon-align" title={applicant.resume_filename}>
                   <FileIcon size={14} /> {applicant.resume_filename}
                 </span>
                 <button 

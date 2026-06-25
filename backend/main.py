@@ -560,15 +560,15 @@ def get_all_applicants(
             if new_score > existing_score:
                 seen[unique_key] = app
 
-    # Override the created_at of each deduplicated applicant with the latest screened date.
-    # Note: Autocommit/autoflush is False and we don't commit in this GET request,
-    # so these modifications will not persist back to the database.
+    # Convert to Pydantic DTO instances to prevent modifying managed database session state
+    deduplicated = []
     for unique_key, app in seen.items():
+        dto = schemas.ApplicantResponse.model_validate(app)
         if unique_key in latest_dates:
-            app.created_at = latest_dates[unique_key]
+            dto.created_at = latest_dates[unique_key]
+        deduplicated.append(dto)
 
-    # Convert to list and sort by created_at desc to preserve overall recency
-    deduplicated = list(seen.values())
+    # Sort by created_at desc to preserve overall recency
     deduplicated.sort(key=lambda x: x.created_at, reverse=True)
     
     return deduplicated

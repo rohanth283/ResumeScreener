@@ -194,11 +194,11 @@ export default function EmailTemplateDrawer({
                     <span className="summary-icon"><MailIcon size={32} /></span>
                     <h4>Dispatch Summary</h4>
                     <div className="summary-metrics">
-                      <span className="metric success" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                      <span className="metric success flex-icon-align">
                         <CheckCircleIcon size={14} /> {sendSummary.sent_count} Sent
                       </span>
                       {sendSummary.failed_count > 0 && (
-                        <span className="metric error" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                        <span className="metric error flex-icon-align">
                           <XCircleIcon size={14} /> {sendSummary.failed_count} Failed
                         </span>
                       )}
@@ -218,9 +218,9 @@ export default function EmailTemplateDrawer({
                               <span className="email">{app.email}</span>
                             </div>
                             <span className={`status-badge-mini ${status}`} title={errorMsg}>
-                              {status === 'success' && <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}><CheckIcon size={12} /> Sent</span>}
-                              {status === 'failed' && <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}><XCircleIcon size={12} /> Failed</span>}
-                              {status === 'pending' && <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}><HourglassIcon size={12} /> Pending</span>}
+                              {status === 'success' && <span className="flex-icon-align"><CheckIcon size={12} /> Sent</span>}
+                              {status === 'failed' && <span className="flex-icon-align"><XCircleIcon size={12} /> Failed</span>}
+                              {status === 'pending' && <span className="flex-icon-align"><HourglassIcon size={12} /> Pending</span>}
                             </span>
                           </div>
                         );
@@ -298,7 +298,7 @@ export default function EmailTemplateDrawer({
                       disabled={sending}
                     />
                     <div className="option-details">
-                      <span className="option-title" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                      <span className="option-title flex-icon-align">
                         <LightningIcon size={14} /> Send Immediately
                       </span>
                       <span className="option-desc">Emails will be dispatched in a sequential queue right now.</span>
@@ -315,7 +315,7 @@ export default function EmailTemplateDrawer({
                       disabled={sending}
                     />
                     <div className="option-details">
-                      <span className="option-title" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                      <span className="option-title flex-icon-align">
                         <ClockIcon size={14} /> Schedule for Later
                       </span>
                       <span className="option-desc">Set a custom date and time to send these emails.</span>
