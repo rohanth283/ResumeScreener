@@ -1,4 +1,13 @@
 import { useEffect, useState } from 'react';
+import {
+  ClockIcon,
+  MailIcon,
+  CheckIcon,
+  CheckCircleIcon,
+  XCircleIcon,
+  HourglassIcon,
+  LightningIcon
+} from './Icons';
 import './EmailTemplateDrawer.css';
 
 export default function EmailTemplateDrawer({ 
@@ -174,7 +183,7 @@ export default function EmailTemplateDrawer({
             <div className="send-summary-results">
               {sendSummary.status === 'scheduled' ? (
                 <div className="summary-status-card">
-                  <span className="summary-icon">⏰</span>
+                  <span className="summary-icon"><ClockIcon size={32} /></span>
                   <h4>Outreach Scheduled</h4>
                   <p className="summary-msg">{sendSummary.message}</p>
                   <p className="scheduled-tip">Emails will be queued and sent automatically at the designated time.</p>
@@ -182,12 +191,16 @@ export default function EmailTemplateDrawer({
               ) : (
                 <>
                   <div className="summary-status-card">
-                    <span className="summary-icon">✉️</span>
+                    <span className="summary-icon"><MailIcon size={32} /></span>
                     <h4>Dispatch Summary</h4>
                     <div className="summary-metrics">
-                      <span className="metric success">✅ {sendSummary.sent_count} Sent</span>
+                      <span className="metric success" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                        <CheckCircleIcon size={14} /> {sendSummary.sent_count} Sent
+                      </span>
                       {sendSummary.failed_count > 0 && (
-                        <span className="metric error">❌ {sendSummary.failed_count} Failed</span>
+                        <span className="metric error" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                          <XCircleIcon size={14} /> {sendSummary.failed_count} Failed
+                        </span>
                       )}
                     </div>
                   </div>
@@ -205,9 +218,9 @@ export default function EmailTemplateDrawer({
                               <span className="email">{app.email}</span>
                             </div>
                             <span className={`status-badge-mini ${status}`} title={errorMsg}>
-                              {status === 'success' && '✅ Sent'}
-                              {status === 'failed' && '❌ Failed'}
-                              {status === 'pending' && '⏳ Pending'}
+                              {status === 'success' && <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}><CheckIcon size={12} /> Sent</span>}
+                              {status === 'failed' && <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}><XCircleIcon size={12} /> Failed</span>}
+                              {status === 'pending' && <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}><HourglassIcon size={12} /> Pending</span>}
                             </span>
                           </div>
                         );
@@ -285,7 +298,9 @@ export default function EmailTemplateDrawer({
                       disabled={sending}
                     />
                     <div className="option-details">
-                      <span className="option-title">⚡ Send Immediately</span>
+                      <span className="option-title" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                        <LightningIcon size={14} /> Send Immediately
+                      </span>
                       <span className="option-desc">Emails will be dispatched in a sequential queue right now.</span>
                     </div>
                   </label>
@@ -300,7 +315,9 @@ export default function EmailTemplateDrawer({
                       disabled={sending}
                     />
                     <div className="option-details">
-                      <span className="option-title">⏰ Schedule for Later</span>
+                      <span className="option-title" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                        <ClockIcon size={14} /> Schedule for Later
+                      </span>
                       <span className="option-desc">Set a custom date and time to send these emails.</span>
                     </div>
                   </label>

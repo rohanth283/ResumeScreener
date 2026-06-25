@@ -1,4 +1,5 @@
 import os
+import datetime
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
@@ -893,15 +894,19 @@ def test_get_all_applicants():
     alice_dup_data = res_a_dup.json()
     assert alice_dup_data["email"] == "john.doe@example.com"
 
-    # Set mock scores to distinct values
+    # Set mock scores and created_at to distinct values
     db_sess = next(override_get_db())
     a1 = db_sess.query(models.Applicant).filter(models.Applicant.id == alice_data["id"]).first()
-    a1.match_score = 80
+    a1.match_score = 90  # Higher score
+    a1.created_at = datetime.datetime.utcnow() - datetime.timedelta(days=2) # Older date
+    
     a2 = db_sess.query(models.Applicant).filter(models.Applicant.id == alice_dup_data["id"]).first()
-    a2.match_score = 90  # Higher score
+    a2.match_score = 80  # Lower score
+    a2.created_at = datetime.datetime.utcnow() # Newer date
     db_sess.commit()
 
     # 6. Fetch all applicants again and check if duplicate email was filtered out, keeping the higher score (90)
+    # but using the last (most recent) screened date (a2's created_at).
     res_all_dup = client.get("/applicants", headers=headers)
     assert res_all_dup.status_code == 200
     all_applicants_dup = res_all_dup.json()
@@ -912,6 +917,10 @@ def test_get_all_applicants():
     # Assert the returned record for Alice has the higher score (90)
     alice_result = next(x for x in all_applicants_dup if x["email"] == "john.doe@example.com")
     assert alice_result["match_score"] == 90
+    
+    # Assert it has the last screened date (which matches a2's created_at, or is after a1's created_at)
+    returned_dt = datetime.datetime.fromisoformat(alice_result["created_at"].replace("Z", ""))
+    assert returned_dt > datetime.datetime.utcnow() - datetime.timedelta(minutes=5)
 
 
 

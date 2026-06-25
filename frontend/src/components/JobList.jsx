@@ -1,3 +1,4 @@
+import { UsersIcon } from './Icons';
 import './JobList.css';
 
 export default function JobList({ jobs, onSelectJob, onCreateJobClick, onViewAllCandidatesClick, isLoading }) {
@@ -41,8 +42,8 @@ export default function JobList({ jobs, onSelectJob, onCreateJobClick, onViewAll
       <div className="dashboard-header">
         <h2>Active Positions</h2>
         <div style={{ display: 'flex', gap: '12px' }}>
-          <button type="button" className="btn-secondary" onClick={onViewAllCandidatesClick}>
-            👥 Entire Candidate List
+          <button type="button" className="btn-secondary" onClick={onViewAllCandidatesClick} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+            <UsersIcon size={14} /> Entire Candidate List
           </button>
           <button type="button" className="add-job-btn" onClick={onCreateJobClick}>
             Create Job

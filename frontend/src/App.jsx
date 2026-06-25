@@ -5,6 +5,16 @@ import NewJobModal from './components/NewJobModal';
 import UploadApplicantModal from './components/UploadApplicantModal';
 import AnalysisDrawer from './components/AnalysisDrawer';
 import EmailTemplateDrawer from './components/EmailTemplateDrawer';
+import DatePicker from './components/DatePicker';
+import {
+  MoonIcon,
+  SunIcon,
+  UsersIcon,
+  MailIcon,
+  BriefcaseIcon,
+  CheckIcon,
+  FlagIcon
+} from './components/Icons';
 import './App.css';
 
 const API_URL = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? '/_/backend' : 'http://localhost:8000');
@@ -1019,7 +1029,7 @@ function App() {
           onClick={() => setTheme(prev => prev === 'light' ? 'dark' : 'light')}
           title={theme === 'light' ? 'Switch to Dark Mode' : 'Switch to Light Mode'}
         >
-          {theme === 'light' ? '🌙' : '☀️'}
+          {theme === 'light' ? <MoonIcon size={18} /> : <SunIcon size={18} />}
         </button>
         <Login apiBaseUrl={API_URL} onAuthSuccess={handleAuthSuccess} />
       </>
@@ -1034,7 +1044,7 @@ function App() {
         onClick={() => setTheme(prev => prev === 'light' ? 'dark' : 'light')}
         title={theme === 'light' ? 'Switch to Dark Mode' : 'Switch to Light Mode'}
       >
-        {theme === 'light' ? '🌙' : '☀️'}
+        {theme === 'light' ? <MoonIcon size={18} /> : <SunIcon size={18} />}
       </button>
       <nav className="nav-bar">
         <div className="user-badge">
@@ -1105,14 +1115,12 @@ function App() {
                   ))}
                 </select>
               </div>
-
               <div className="filter-group">
                 <span className="filter-label">Screened Since:</span>
-                <input
-                  type="date"
-                  className="filter-input"
+                <DatePicker
                   value={filterDate}
-                  onChange={(e) => setFilterDate(e.target.value)}
+                  onChange={setFilterDate}
+                  placeholder="Select Date"
                 />
               </div>
             </div>
@@ -1139,7 +1147,7 @@ function App() {
                     <thead>
                       <tr>
                         <th style={{ width: '40px', textAlign: 'center' }}>#</th>
-                        <th style={{ width: '45px', textAlign: 'center' }}>⚑</th>
+                        <th style={{ width: '45px', textAlign: 'center' }}><FlagIcon size={14} /></th>
                         <th>Candidate</th>
                         <th>Position</th>
                         <th>Department</th>
@@ -1168,15 +1176,15 @@ function App() {
                                 onClick={() => handleToggleReview(app)}
                                 title={app.is_reviewed ? "Marked as Reviewed" : "Mark as Reviewed"}
                               >
-                                ⚑
+                                <FlagIcon size={14} fill={app.is_reviewed ? 'currentColor' : 'none'} />
                               </button>
                             </td>
                             <td>
                               <div className="candidate-name-cell">
                                 {app.name || 'Unknown Candidate'}
                                 {app.is_reviewed && (
-                                  <span className="reviewed-checkmark-badge" title="Manually Audited & Reviewed">
-                                    ✓ Reviewed
+                                  <span className="reviewed-checkmark-badge" title="Manually Audited & Reviewed" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                                    <CheckIcon size={10} /> Reviewed
                                   </span>
                                 )}
                               </div>
@@ -1206,7 +1214,7 @@ function App() {
                                     setAltMatchModalData(app);
                                   }}
                                 >
-                                  💼 Different Match
+                                  <BriefcaseIcon size={12} style={{ marginRight: '4px' }} /> Different Match
                                 </button>
                               ) : (
                                 <span style={{ color: 'var(--text-muted)' }}>—</span>
@@ -1327,8 +1335,9 @@ function App() {
               type="button"
               className={`tab-button ${activeTab === 'candidates' ? 'active' : ''}`}
               onClick={() => setActiveTab('candidates')}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', justifyContent: 'center' }}
             >
-              👥 Candidates
+              <UsersIcon size={14} /> Candidates
             </button>
             <button
               type="button"
@@ -1337,8 +1346,9 @@ function App() {
                 setActiveTab('emails');
                 fetchEmailsHistory(activeJob.id);
               }}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', justifyContent: 'center' }}
             >
-              ✉️ Email History
+              <MailIcon size={14} /> Email History
             </button>
           </div>
 
@@ -1386,7 +1396,7 @@ function App() {
                       onClick={() => setIsEmailDrawerOpen(true)}
                       style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
                     >
-                      📧 Email Selected ({selectedApplicantIds.length})
+                      <MailIcon size={14} /> Email Selected ({selectedApplicantIds.length})
                     </button>
                     <button
                       type="button"
@@ -1435,7 +1445,7 @@ function App() {
                         </th>
                         <th style={{ width: '40px', textAlign: 'center' }}>#</th>
                         <th style={{ width: '45px', textAlign: 'center' }}>
-                          ⚑
+                          <FlagIcon size={14} />
                         </th>
                         <th onClick={() => handleSort('name')} style={{ cursor: 'pointer', userSelect: 'none' }} className="sortable-header">
                           Candidate {sortBy === 'name' && (sortOrder === 'asc' ? ' ▲' : ' ▼')}
@@ -1476,15 +1486,15 @@ function App() {
                                 onClick={() => handleToggleReview(app)}
                                 title={app.is_reviewed ? "Marked as Reviewed" : "Mark as Reviewed"}
                               >
-                                ⚑
+                                <FlagIcon size={14} fill={app.is_reviewed ? 'currentColor' : 'none'} />
                               </button>
                             </td>
                             <td>
                               <div className="candidate-name-cell">
                                 {app.name || 'Unknown Candidate'}
                                 {app.is_reviewed && (
-                                  <span className="reviewed-checkmark-badge" title="Manually Audited & Reviewed">
-                                    ✓ Reviewed
+                                  <span className="reviewed-checkmark-badge" title="Manually Audited & Reviewed" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                                    <CheckIcon size={10} /> Reviewed
                                   </span>
                                 )}
                               </div>
@@ -1508,7 +1518,7 @@ function App() {
                                     setAltMatchModalData(app);
                                   }}
                                 >
-                                  💼 Different Match
+                                  <BriefcaseIcon size={12} style={{ marginRight: '4px' }} /> Different Match
                                 </button>
                               ) : (
                                 <span style={{ color: 'var(--text-muted)' }}>—</span>

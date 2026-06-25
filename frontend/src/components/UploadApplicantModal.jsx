@@ -1,4 +1,11 @@
 import { useState } from 'react';
+import { 
+  FileIcon, 
+  HourglassIcon, 
+  CheckCircleIcon, 
+  XCircleIcon, 
+  UploadIcon 
+} from './Icons';
 import './UploadApplicantModal.css';
 
 export default function UploadApplicantModal({ 
@@ -82,20 +89,28 @@ export default function UploadApplicantModal({
             <div className="progress-list">
               {uploadProgress.files.map((file, i) => (
                 <div key={i} className="progress-item">
-                  <span className="progress-file-name" title={file.name}>
-                    📄 {file.name}
+                  <span className="progress-file-name" title={file.name} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                    <FileIcon size={14} /> {file.name}
                   </span>
                   <span className={`status-badge ${file.status}`}>
-                    {file.status === 'pending' && <span className="badge-text pending">⏳ Pending</span>}
+                    {file.status === 'pending' && (
+                      <span className="badge-text pending" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                        <HourglassIcon size={12} /> Pending
+                      </span>
+                    )}
                     {file.status === 'loading' && (
                       <span className="badge-text loading">
                         <span className="mini-spinner" /> Screening...
                       </span>
                     )}
-                    {file.status === 'success' && <span className="badge-text success">✅ Complete</span>}
+                    {file.status === 'success' && (
+                      <span className="badge-text success" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                        <CheckCircleIcon size={12} /> Complete
+                      </span>
+                    )}
                     {file.status === 'error' && (
-                      <span className="badge-text error" title={file.errorMsg}>
-                        ❌ Failed
+                      <span className="badge-text error" title={file.errorMsg} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                        <XCircleIcon size={12} /> Failed
                       </span>
                     )}
                   </span>
@@ -121,7 +136,7 @@ export default function UploadApplicantModal({
                   onChange={handleFileChange}
                   disabled={loading}
                 />
-                <span className="modal-file-icon">📤</span>
+                <span className="modal-file-icon"><UploadIcon size={24} /></span>
                 <span className="modal-file-hint">
                   {candidateEmail 
                     ? 'Click or drag a single resume file'
@@ -139,7 +154,9 @@ export default function UploadApplicantModal({
                 <div className="selected-files-list">
                   {selectedFiles.map((file, idx) => (
                     <div key={idx} className="selected-file-item">
-                      <span className="file-item-name" title={file.name}>📄 {file.name}</span>
+                      <span className="file-item-name" title={file.name} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                        <FileIcon size={14} /> {file.name}
+                      </span>
                       <button 
                         type="button" 
                         className="remove-file-btn" 

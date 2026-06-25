@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { FlagIcon, FileIcon, AlertIcon } from './Icons';
 import './AnalysisDrawer.css';
 
 export default function AnalysisDrawer({ isOpen, onClose, applicant, onRescreen, onToggleReview, onDelete, onSwitchToApplicant, token, apiUrl, jobId }) {
@@ -126,13 +127,15 @@ export default function AnalysisDrawer({ isOpen, onClose, applicant, onRescreen,
                   onClick={() => onToggleReview(applicant)}
                   title={applicant.is_reviewed ? "Marked as Reviewed" : "Mark as Reviewed"}
                 >
-                  ⚑
+                  <FlagIcon size={20} fill={applicant.is_reviewed ? 'currentColor' : 'none'} />
                 </button>
               </div>
               <p>{applicant.email}</p>
               <span className="drawer-file-label">Resume File</span>
               <div className="meta-filename-row">
-                <span className="meta-filename">📄 {applicant.resume_filename}</span>
+                <span className="meta-filename" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                  <FileIcon size={14} /> {applicant.resume_filename}
+                </span>
                 <div className="meta-actions">
                   <button
                     type="button"
@@ -182,9 +185,15 @@ export default function AnalysisDrawer({ isOpen, onClose, applicant, onRescreen,
                 fontSize: '12px',
                 lineHeight: '1.5',
                 color: '#B06000',
-                marginBottom: '16px'
+                marginBottom: '16px',
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: '8px'
               }}>
-                ⚠️ <strong>AI-Generated Evaluation:</strong> This report was compiled by AI to assist the screening process. Please conduct a manual review before making final candidate decisions.
+                <AlertIcon size={16} style={{ flexShrink: 0, marginTop: '1px', color: '#B06000' }} />
+                <div>
+                  <strong>AI-Generated Evaluation:</strong> This report was compiled by AI to assist the screening process. Please conduct a manual review before making final candidate decisions.
+                </div>
               </div>
               {/* Evaluation Summary */}
               <div className="detail-block">
@@ -316,8 +325,8 @@ export default function AnalysisDrawer({ isOpen, onClose, applicant, onRescreen,
           ) : (
             <div className="resume-viewer-tab" style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: '500px' }}>
               <div className="resume-viewer-header">
-                <span className="file-info" title={applicant.resume_filename}>
-                  📄 {applicant.resume_filename}
+                <span className="file-info" title={applicant.resume_filename} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                  <FileIcon size={14} /> {applicant.resume_filename}
                 </span>
                 <button 
                   type="button" 

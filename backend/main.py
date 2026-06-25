@@ -530,8 +530,10 @@ def get_all_applicants(
         models.Job.user_id == current_user.id
     ).order_by(models.Applicant.created_at.desc()).all()
     
-    # Deduplicate candidates by email address case-insensitively, keeping the one with the highest match score (or most recent as fallback)
+    # Deduplicate candidates by email address case-insensitively, keeping the one with the highest match score,
+    # but use the last (most recent) screened date (created_at) across all screenings.
     seen = {}
+    latest_dates = {}
     for app in applicants:
         setattr(app, "job_title", app.job.title)
         setattr(app, "job_department", app.job.department)
@@ -543,6 +545,11 @@ def get_all_applicants(
         else:
             unique_key = email_key
             
+        # Since applicants are ordered by created_at.desc(), the first time we see unique_key,
+        # it has the most recent created_at date.
+        if unique_key not in latest_dates:
+            latest_dates[unique_key] = app.created_at
+            
         if unique_key not in seen:
             seen[unique_key] = app
         else:
@@ -550,9 +557,15 @@ def get_all_applicants(
             existing_score = existing.match_score or 0
             new_score = app.match_score or 0
             # Keep the application with the higher match score.
-            # If scores are equal, keep the most recent one (already processed first due to order_by(created_at.desc()))
             if new_score > existing_score:
                 seen[unique_key] = app
+
+    # Override the created_at of each deduplicated applicant with the latest screened date.
+    # Note: Autocommit/autoflush is False and we don't commit in this GET request,
+    # so these modifications will not persist back to the database.
+    for unique_key, app in seen.items():
+        if unique_key in latest_dates:
+            app.created_at = latest_dates[unique_key]
 
     # Convert to list and sort by created_at desc to preserve overall recency
     deduplicated = list(seen.values())
