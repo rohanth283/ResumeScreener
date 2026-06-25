@@ -75,6 +75,9 @@ function App() {
   const [allApplicants, setAllApplicants] = useState([]);
   const [allApplicantsLoading, setAllApplicantsLoading] = useState(false);
   const [selectedDept, setSelectedDept] = useState('');
+  const [searchName, setSearchName] = useState('');
+  const [selectedPosition, setSelectedPosition] = useState('');
+  const [filterDate, setFilterDate] = useState('');
 
   // Unique departments for filtering
   const uniqueDepartments = useMemo(() => {
@@ -87,13 +90,45 @@ function App() {
     return Array.from(depts).sort();
   }, [allApplicants]);
 
+  // Unique positions for filtering
+  const uniquePositions = useMemo(() => {
+    const titles = new Set();
+    allApplicants.forEach(app => {
+      if (app.job_title) {
+        titles.add(app.job_title.trim());
+      }
+    });
+    return Array.from(titles).sort();
+  }, [allApplicants]);
+
   // Filtered all applicants dynamically
   const filteredAllApplicants = useMemo(() => {
     return allApplicants.filter(app => {
-      if (!selectedDept) return true;
-      return (app.job_department || '').trim().toLowerCase() === selectedDept.trim().toLowerCase();
+      // 1. Department filter
+      if (selectedDept && (app.job_department || '').trim().toLowerCase() !== selectedDept.trim().toLowerCase()) {
+        return false;
+      }
+      // 2. Name filter
+      if (searchName && !(app.name || '').toLowerCase().includes(searchName.toLowerCase())) {
+        return false;
+      }
+      // 3. Position filter
+      if (selectedPosition && (app.job_title || '').trim().toLowerCase() !== selectedPosition.trim().toLowerCase()) {
+        return false;
+      }
+      // 4. Date filter (screened on or after selected date)
+      if (filterDate) {
+        const appDate = new Date(app.created_at);
+        const filterTarget = new Date(filterDate);
+        appDate.setHours(0, 0, 0, 0);
+        filterTarget.setHours(0, 0, 0, 0);
+        if (appDate < filterTarget) {
+          return false;
+        }
+      }
+      return true;
     });
-  }, [allApplicants, selectedDept]);
+  }, [allApplicants, selectedDept, searchName, selectedPosition, filterDate]);
 
   // Modals & Drawer State
   const [isNewJobModalOpen, setIsNewJobModalOpen] = useState(false);
@@ -206,6 +241,9 @@ function App() {
   const handleViewAllCandidates = () => {
     setShowAllApplicants(true);
     setSelectedDept('');
+    setSearchName('');
+    setSelectedPosition('');
+    setFilterDate('');
     fetchAllApplicants();
   };
 
@@ -1027,9 +1065,29 @@ function App() {
                 </p>
               </div>
               
-              <div className="header-actions" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div className="header-actions" style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-muted)' }}>Filter Department:</span>
+                  <span style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-muted)' }}>Name:</span>
+                  <input
+                    type="text"
+                    placeholder="Search name..."
+                    value={searchName}
+                    onChange={(e) => setSearchName(e.target.value)}
+                    style={{
+                      padding: '8px 12px',
+                      borderRadius: '6px',
+                      border: '1px solid var(--border)',
+                      backgroundColor: 'var(--surface)',
+                      color: 'var(--text)',
+                      fontSize: '13px',
+                      outline: 'none',
+                      minWidth: '150px'
+                    }}
+                  />
+                </div>
+                
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-muted)' }}>Department:</span>
                   <select
                     value={selectedDept}
                     onChange={(e) => setSelectedDept(e.target.value)}
@@ -1042,7 +1100,7 @@ function App() {
                       fontSize: '13px',
                       cursor: 'pointer',
                       outline: 'none',
-                      minWidth: '180px'
+                      minWidth: '150px'
                     }}
                   >
                     <option value="">All Departments</option>
@@ -1050,6 +1108,50 @@ function App() {
                       <option key={dept} value={dept}>{dept}</option>
                     ))}
                   </select>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-muted)' }}>Position:</span>
+                  <select
+                    value={selectedPosition}
+                    onChange={(e) => setSelectedPosition(e.target.value)}
+                    style={{
+                      padding: '8px 12px',
+                      borderRadius: '6px',
+                      border: '1px solid var(--border)',
+                      backgroundColor: 'var(--surface)',
+                      color: 'var(--text)',
+                      fontSize: '13px',
+                      cursor: 'pointer',
+                      outline: 'none',
+                      minWidth: '150px'
+                    }}
+                  >
+                    <option value="">All Positions</option>
+                    {uniquePositions.map((pos) => (
+                      <option key={pos} value={pos}>{pos}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-muted)' }}>Screened Since:</span>
+                  <input
+                    type="date"
+                    value={filterDate}
+                    onChange={(e) => setFilterDate(e.target.value)}
+                    style={{
+                      padding: '8px 12px',
+                      borderRadius: '6px',
+                      border: '1px solid var(--border)',
+                      backgroundColor: 'var(--surface)',
+                      color: 'var(--text)',
+                      fontSize: '13px',
+                      outline: 'none',
+                      cursor: 'pointer',
+                      minWidth: '150px'
+                    }}
+                  />
                 </div>
               </div>
             </div>
@@ -1075,6 +1177,7 @@ function App() {
                   <table className="applicants-table">
                     <thead>
                       <tr>
+                        <th style={{ width: '40px', textAlign: 'center' }}>#</th>
                         <th style={{ width: '45px', textAlign: 'center' }}>⚑</th>
                         <th>Candidate</th>
                         <th>Position</th>
@@ -1086,7 +1189,7 @@ function App() {
                       </tr>
                     </thead>
                     <tbody>
-                      {filteredAllApplicants.map((app) => {
+                      {filteredAllApplicants.map((app, index) => {
                         const scoreClass = app.match_score >= 80 ? 'excellent' : app.match_score >= 60 ? 'good' : 'poor';
                         return (
                           <tr
@@ -1094,6 +1197,9 @@ function App() {
                             className="applicant-row"
                             onClick={() => handleSelectApplicant(app)}
                           >
+                            <td style={{ textAlign: 'center', fontWeight: '500', color: 'var(--text-muted)' }}>
+                              {index + 1}
+                            </td>
                             <td onClick={(e) => e.stopPropagation()} style={{ textAlign: 'center' }}>
                               <button
                                 type="button"
@@ -1366,6 +1472,7 @@ function App() {
                             onChange={handleToggleSelectAllApplicants}
                           />
                         </th>
+                        <th style={{ width: '40px', textAlign: 'center' }}>#</th>
                         <th style={{ width: '45px', textAlign: 'center' }}>
                           ⚑
                         </th>
@@ -1383,7 +1490,7 @@ function App() {
                       </tr>
                     </thead>
                     <tbody>
-                      {sortedApplicants.map((app) => {
+                      {sortedApplicants.map((app, index) => {
                         const scoreClass = app.match_score >= 80 ? 'excellent' : app.match_score >= 60 ? 'good' : 'poor';
                         return (
                           <tr
@@ -1397,6 +1504,9 @@ function App() {
                                 checked={selectedApplicantIds.includes(app.id)}
                                 onChange={() => handleToggleSelectApplicant(app.id)}
                               />
+                            </td>
+                            <td style={{ textAlign: 'center', fontWeight: '500', color: 'var(--text-muted)' }}>
+                              {index + 1}
                             </td>
                             <td onClick={(e) => e.stopPropagation()} style={{ textAlign: 'center' }}>
                               <button
