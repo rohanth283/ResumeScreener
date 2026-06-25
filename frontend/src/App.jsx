@@ -70,6 +70,12 @@ function App() {
     });
   }, [applicants, sortBy, sortOrder]);
 
+  // Entire Candidate List States
+  const [showAllApplicants, setShowAllApplicants] = useState(false);
+  const [allApplicants, setAllApplicants] = useState([]);
+  const [allApplicantsLoading, setAllApplicantsLoading] = useState(false);
+  const [selectedDept, setSelectedDept] = useState('');
+
   // Unique departments for filtering
   const uniqueDepartments = useMemo(() => {
     const depts = new Set();
@@ -88,12 +94,6 @@ function App() {
       return (app.job_department || '').trim().toLowerCase() === selectedDept.trim().toLowerCase();
     });
   }, [allApplicants, selectedDept]);
-
-  // Entire Candidate List States
-  const [showAllApplicants, setShowAllApplicants] = useState(false);
-  const [allApplicants, setAllApplicants] = useState([]);
-  const [allApplicantsLoading, setAllApplicantsLoading] = useState(false);
-  const [selectedDept, setSelectedDept] = useState('');
 
   // Modals & Drawer State
   const [isNewJobModalOpen, setIsNewJobModalOpen] = useState(false);
