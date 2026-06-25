@@ -1064,95 +1064,56 @@ function App() {
                   View and filter all candidates who have applied across all positions.
                 </p>
               </div>
+            </div>
+
+            <div className="filter-bar">
+              <div className="filter-group">
+                <span className="filter-label">Search Name:</span>
+                <input
+                  type="text"
+                  className="filter-input"
+                  placeholder="Type to search..."
+                  value={searchName}
+                  onChange={(e) => setSearchName(e.target.value)}
+                />
+              </div>
               
-              <div className="header-actions" style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-muted)' }}>Name:</span>
-                  <input
-                    type="text"
-                    placeholder="Search name..."
-                    value={searchName}
-                    onChange={(e) => setSearchName(e.target.value)}
-                    style={{
-                      padding: '8px 12px',
-                      borderRadius: '6px',
-                      border: '1px solid var(--border)',
-                      backgroundColor: 'var(--surface)',
-                      color: 'var(--text)',
-                      fontSize: '13px',
-                      outline: 'none',
-                      minWidth: '150px'
-                    }}
-                  />
-                </div>
-                
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-muted)' }}>Department:</span>
-                  <select
-                    value={selectedDept}
-                    onChange={(e) => setSelectedDept(e.target.value)}
-                    style={{
-                      padding: '8px 12px',
-                      borderRadius: '6px',
-                      border: '1px solid var(--border)',
-                      backgroundColor: 'var(--surface)',
-                      color: 'var(--text)',
-                      fontSize: '13px',
-                      cursor: 'pointer',
-                      outline: 'none',
-                      minWidth: '150px'
-                    }}
-                  >
-                    <option value="">All Departments</option>
-                    {uniqueDepartments.map((dept) => (
-                      <option key={dept} value={dept}>{dept}</option>
-                    ))}
-                  </select>
-                </div>
+              <div className="filter-group">
+                <span className="filter-label">Department:</span>
+                <select
+                  className="filter-select"
+                  value={selectedDept}
+                  onChange={(e) => setSelectedDept(e.target.value)}
+                >
+                  <option value="">All Departments</option>
+                  {uniqueDepartments.map((dept) => (
+                    <option key={dept} value={dept}>{dept}</option>
+                  ))}
+                </select>
+              </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-muted)' }}>Position:</span>
-                  <select
-                    value={selectedPosition}
-                    onChange={(e) => setSelectedPosition(e.target.value)}
-                    style={{
-                      padding: '8px 12px',
-                      borderRadius: '6px',
-                      border: '1px solid var(--border)',
-                      backgroundColor: 'var(--surface)',
-                      color: 'var(--text)',
-                      fontSize: '13px',
-                      cursor: 'pointer',
-                      outline: 'none',
-                      minWidth: '150px'
-                    }}
-                  >
-                    <option value="">All Positions</option>
-                    {uniquePositions.map((pos) => (
-                      <option key={pos} value={pos}>{pos}</option>
-                    ))}
-                  </select>
-                </div>
+              <div className="filter-group">
+                <span className="filter-label">Position:</span>
+                <select
+                  className="filter-select"
+                  value={selectedPosition}
+                  onChange={(e) => setSelectedPosition(e.target.value)}
+                >
+                  <option value="">All Positions</option>
+                  {uniquePositions.map((pos) => (
+                    <option key={pos} value={pos}>{pos}</option>
+                  ))}
+                </select>
+              </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-muted)' }}>Screened Since:</span>
-                  <input
-                    type="date"
-                    value={filterDate}
-                    onChange={(e) => setFilterDate(e.target.value)}
-                    style={{
-                      padding: '8px 12px',
-                      borderRadius: '6px',
-                      border: '1px solid var(--border)',
-                      backgroundColor: 'var(--surface)',
-                      color: 'var(--text)',
-                      fontSize: '13px',
-                      outline: 'none',
-                      cursor: 'pointer',
-                      minWidth: '150px'
-                    }}
-                  />
-                </div>
+              <div className="filter-group">
+                <span className="filter-label">Screened Since:</span>
+                <input
+                  type="date"
+                  className="filter-input"
+                  value={filterDate}
+                  onChange={(e) => setFilterDate(e.target.value)}
+                />
               </div>
             </div>
 
