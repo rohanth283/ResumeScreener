@@ -846,6 +846,39 @@ def test_cross_position_candidate_matching():
     assert matches_after[0]["screened_score"] == transfer_data["match_score"]
 
 
+def test_get_all_applicants():
+    # 1. Sign up/login user
+    signup_payload = {"email": "tester_all_apps@example.com", "password": "password123", "name": "Tester All"}
+    res = client.post("/auth/signup", json=signup_payload)
+    assert res.status_code == 200
+    token = res.json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    # 2. Create Job A (Engineering) and Job B (Sales)
+    job_a = client.post("/jobs", json={"title": "Software Eng", "department": "Engineering", "description": "Dev"}, headers=headers).json()
+    job_b = client.post("/jobs", json={"title": "Sales Exec", "department": "Sales", "description": "Sell stuff"}, headers=headers).json()
+
+    # 3. Screen 1 candidate for Job A and 1 candidate for Job B
+    resume_a = ("resume_a.txt", b"Candidate Alice. Software Eng.", "text/plain")
+    res_a = client.post(f"/jobs/{job_a['id']}/screen", files={"resume_file": resume_a}, headers=headers)
+    assert res_a.status_code == 200
+
+    resume_b = ("resume_b.txt", b"Candidate Bob. Sales Exec.", "text/plain")
+    res_b = client.post(f"/jobs/{job_b['id']}/screen", files={"resume_file": resume_b}, headers=headers)
+    assert res_b.status_code == 200
+
+    # 4. Fetch all applicants across all jobs
+    res_all = client.get("/applicants", headers=headers)
+    assert res_all.status_code == 200
+    all_applicants = res_all.json()
+    assert len(all_applicants) == 2
+
+    # Check order and fields
+    assert all_applicants[0]["job_title"] in ["Software Eng", "Sales Exec"]
+    assert all_applicants[0]["job_department"] in ["Engineering", "Sales"]
+
+
+
 
 
 

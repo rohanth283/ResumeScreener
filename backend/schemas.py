@@ -82,6 +82,8 @@ class ApplicantResponse(BaseModel):
     best_alternative_score: Optional[float] = None
     best_alternative_is_screened: Optional[bool] = None
     best_alternative_applicant_id: Optional[int] = None
+    job_title: Optional[str] = None
+    job_department: Optional[str] = None
     created_at: datetime
 
     class Config:

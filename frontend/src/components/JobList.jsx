@@ -1,6 +1,6 @@
 import './JobList.css';
 
-export default function JobList({ jobs, onSelectJob, onCreateJobClick, isLoading }) {
+export default function JobList({ jobs, onSelectJob, onCreateJobClick, onViewAllCandidatesClick, isLoading }) {
   if (isLoading) {
     return (
       <div className="job-dashboard">
@@ -40,9 +40,14 @@ export default function JobList({ jobs, onSelectJob, onCreateJobClick, isLoading
     <div className="job-dashboard">
       <div className="dashboard-header">
         <h2>Active Positions</h2>
-        <button type="button" className="add-job-btn" onClick={onCreateJobClick}>
-          Create Job
-        </button>
+        <div style={{ display: 'flex', gap: '12px' }}>
+          <button type="button" className="btn-secondary" onClick={onViewAllCandidatesClick}>
+            👥 Entire Candidate List
+          </button>
+          <button type="button" className="add-job-btn" onClick={onCreateJobClick}>
+            Create Job
+          </button>
+        </div>
       </div>
 
       <div className="jobs-grid">

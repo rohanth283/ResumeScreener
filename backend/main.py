@@ -10,7 +10,7 @@ from fastapi import FastAPI, File, Form, UploadFile, Depends, HTTPException, sta
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func
 from jose import JWTError, jwt
 from typing import Optional
@@ -516,6 +516,25 @@ def attach_best_alternative_matches(applicants: list[models.Applicant], db: Sess
         setattr(app, "best_alternative_score", best_score)
         setattr(app, "best_alternative_is_screened", best_is_screened)
         setattr(app, "best_alternative_applicant_id", best_app_id)
+
+
+@app.get("/applicants", response_model=list[schemas.ApplicantResponse])
+def get_all_applicants(
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    # Eager load the parent job info to prevent N+1 query latency
+    applicants = db.query(models.Applicant).join(models.Job).options(
+        joinedload(models.Applicant.job)
+    ).filter(
+        models.Job.user_id == current_user.id
+    ).order_by(models.Applicant.created_at.desc()).all()
+    
+    for app in applicants:
+        setattr(app, "job_title", app.job.title)
+        setattr(app, "job_department", app.job.department)
+        
+    return applicants
 
 
 @app.get("/jobs/{job_id}/applicants", response_model=list[schemas.ApplicantResponse])

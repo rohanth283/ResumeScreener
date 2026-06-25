@@ -70,6 +70,31 @@ function App() {
     });
   }, [applicants, sortBy, sortOrder]);
 
+  // Unique departments for filtering
+  const uniqueDepartments = useMemo(() => {
+    const depts = new Set();
+    allApplicants.forEach(app => {
+      if (app.job_department) {
+        depts.add(app.job_department.trim());
+      }
+    });
+    return Array.from(depts).sort();
+  }, [allApplicants]);
+
+  // Filtered all applicants dynamically
+  const filteredAllApplicants = useMemo(() => {
+    return allApplicants.filter(app => {
+      if (!selectedDept) return true;
+      return (app.job_department || '').trim().toLowerCase() === selectedDept.trim().toLowerCase();
+    });
+  }, [allApplicants, selectedDept]);
+
+  // Entire Candidate List States
+  const [showAllApplicants, setShowAllApplicants] = useState(false);
+  const [allApplicants, setAllApplicants] = useState([]);
+  const [allApplicantsLoading, setAllApplicantsLoading] = useState(false);
+  const [selectedDept, setSelectedDept] = useState('');
+
   // Modals & Drawer State
   const [isNewJobModalOpen, setIsNewJobModalOpen] = useState(false);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
@@ -154,6 +179,39 @@ function App() {
     } finally {
       setApplicantsLoading(false);
     }
+  };
+
+  const fetchAllApplicants = async () => {
+    setAllApplicantsLoading(true);
+    setError(null);
+    try {
+      const response = await fetch(`${API_URL}/applicants`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (response.status === 401) {
+        handleLogout();
+        return;
+      }
+      if (!response.ok) throw new Error('Failed to load candidate list.');
+      const data = await response.json();
+      setAllApplicants(data);
+    } catch (err) {
+      console.error(err.message);
+      setError(err.message);
+    } finally {
+      setAllApplicantsLoading(false);
+    }
+  };
+
+  const handleViewAllCandidates = () => {
+    setShowAllApplicants(true);
+    setSelectedDept('');
+    fetchAllApplicants();
+  };
+
+  const handleBackToDashboard = () => {
+    setShowAllApplicants(false);
+    setActiveJob(null);
   };
 
   const handleSwitchToJobApplicant = async (targetJobId, targetApplicantId) => {
@@ -303,6 +361,8 @@ function App() {
     setActiveTab('candidates');
     setEmailsHistory([]);
     setExpandedEmailJobIds([]);
+    setAllApplicants([]);
+    setShowAllApplicants(false);
     localStorage.removeItem('auth_token');
     localStorage.removeItem('auth_user');
   };
@@ -621,11 +681,12 @@ function App() {
     if (!rescreenApplicant) return;
     setLoading(true);
     setError(null);
+    const targetJobId = activeJob ? activeJob.id : rescreenApplicant.job_id;
     try {
       const formData = new FormData();
       formData.append('resume_file', resumeFile);
 
-      const response = await fetch(`${API_URL}/jobs/${activeJob.id}/applicants/${rescreenApplicant.id}/rescreen`, {
+      const response = await fetch(`${API_URL}/jobs/${targetJobId}/applicants/${rescreenApplicant.id}/rescreen`, {
         method: 'PUT',
         headers: { 'Authorization': `Bearer ${token}` },
         body: formData,
@@ -656,6 +717,8 @@ function App() {
         const updated = prev.map((a) => (a.id === rescreenApplicant.id ? data : a));
         return updated.sort((a, b) => b.match_score - a.match_score);
       });
+      
+      setAllApplicants((prev) => prev.map((a) => (a.id === rescreenApplicant.id ? { ...data, job_title: a.job_title, job_department: a.job_department } : a)));
 
       // Update activeApplicant if they are current drawer
       if (activeApplicant && activeApplicant.id === rescreenApplicant.id) {
@@ -688,12 +751,16 @@ function App() {
     const optimisticApplicant = { ...applicant, is_reviewed: optimisticStatus };
 
     setApplicants((prev) => prev.map((a) => (a.id === applicant.id ? optimisticApplicant : a)));
+    setAllApplicants((prev) => prev.map((a) => (a.id === applicant.id ? optimisticApplicant : a)));
     if (activeApplicant && activeApplicant.id === applicant.id) {
       setActiveApplicant(optimisticApplicant);
     }
 
+    const targetJobId = activeJob ? activeJob.id : applicant.job_id;
+    const originalAllApplicants = allApplicants;
+
     try {
-      const response = await fetch(`${API_URL}/jobs/${activeJob.id}/applicants/${applicant.id}/review`, {
+      const response = await fetch(`${API_URL}/jobs/${targetJobId}/applicants/${applicant.id}/review`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -702,6 +769,7 @@ function App() {
       if (response.status === 401) {
         // Rollback state on auth error
         setApplicants((prev) => prev.map((a) => (a.id === applicant.id ? applicant : a)));
+        setAllApplicants(originalAllApplicants);
         if (activeApplicant && activeApplicant.id === applicant.id) {
           setActiveApplicant(applicant);
         }
@@ -713,12 +781,14 @@ function App() {
 
       // Ensure sync with server data
       setApplicants((prev) => prev.map((a) => (a.id === applicant.id ? data : a)));
+      setAllApplicants((prev) => prev.map((a) => (a.id === applicant.id ? { ...data, job_title: a.job_title, job_department: a.job_department } : a)));
       if (activeApplicant && activeApplicant.id === applicant.id) {
         setActiveApplicant(data);
       }
     } catch (err) {
       // Rollback state on network/API failure
       setApplicants((prev) => prev.map((a) => (a.id === applicant.id ? applicant : a)));
+      setAllApplicants(originalAllApplicants);
       if (activeApplicant && activeApplicant.id === applicant.id) {
         setActiveApplicant(applicant);
       }
@@ -733,6 +803,7 @@ function App() {
     
     // Save original state references
     const originalApplicants = applicants;
+    const originalAllApplicants = allApplicants;
     const originalJobs = jobs;
     const originalActiveJob = activeJob;
     const originalSelectedApplicantIds = selectedApplicantIds;
@@ -741,13 +812,14 @@ function App() {
     
     // Optimistic UI updates: instantly remove from state
     setApplicants((prev) => prev.filter((a) => a.id !== applicant.id));
+    setAllApplicants((prev) => prev.filter((a) => a.id !== applicant.id));
     
-    if (activeJob) {
-      setJobs((prevJobs) => 
-        prevJobs.map((j) => 
-          j.id === activeJob.id ? { ...j, applicant_count: Math.max(0, (j.applicant_count || 0) - 1) } : j
-        )
-      );
+    setJobs((prevJobs) => 
+      prevJobs.map((j) => 
+        j.id === applicant.job_id ? { ...j, applicant_count: Math.max(0, (j.applicant_count || 0) - 1) } : j
+      )
+    );
+    if (activeJob && activeJob.id === applicant.job_id) {
       setActiveJob((prevJob) => 
         prevJob ? { ...prevJob, applicant_count: Math.max(0, (prevJob.applicant_count || 0) - 1) } : null
       );
@@ -761,7 +833,7 @@ function App() {
     }
     
     try {
-      const response = await fetch(`${API_URL}/jobs/${activeJob.id}/applicants/${applicant.id}`, {
+      const response = await fetch(`${API_URL}/jobs/${applicant.job_id}/applicants/${applicant.id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -770,6 +842,7 @@ function App() {
       if (response.status === 401) {
         // Rollback
         setApplicants(originalApplicants);
+        setAllApplicants(originalAllApplicants);
         setJobs(originalJobs);
         setActiveJob(originalActiveJob);
         setSelectedApplicantIds(originalSelectedApplicantIds);
@@ -782,6 +855,7 @@ function App() {
     } catch (err) {
       // Rollback
       setApplicants(originalApplicants);
+      setAllApplicants(originalAllApplicants);
       setJobs(originalJobs);
       setActiveJob(originalActiveJob);
       setSelectedApplicantIds(originalSelectedApplicantIds);
@@ -934,22 +1008,171 @@ function App() {
       </nav>
 
       {!activeJob ? (
-        // Jobs Dashboard view
-        <div className="app-content">
-          <header className="app-header">
-            <div className="header-content">
-              <h1>Smart Resume Screener</h1>
-              <p>Post job positions and screen candidate resumes using AI analytics.</p>
+        showAllApplicants ? (
+          // Entire Candidate List view
+          <div className="job-details-container all-candidates-container">
+            <div className="details-header">
+              <div className="header-left">
+                <button type="button" className="back-link" onClick={handleBackToDashboard}>
+                  ← Back to Dashboard
+                </button>
+                <h2 style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  Entire Candidate List
+                  <span className="badge" style={{ backgroundColor: 'var(--primary)', color: 'white' }}>
+                    {filteredAllApplicants.length} Screened
+                  </span>
+                </h2>
+                <p style={{ margin: '4px 0 0', color: 'var(--text-muted)' }}>
+                  View and filter all candidates who have applied across all positions.
+                </p>
+              </div>
+              
+              <div className="header-actions" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-muted)' }}>Filter Department:</span>
+                  <select
+                    value={selectedDept}
+                    onChange={(e) => setSelectedDept(e.target.value)}
+                    style={{
+                      padding: '8px 12px',
+                      borderRadius: '6px',
+                      border: '1px solid var(--border)',
+                      backgroundColor: 'var(--surface)',
+                      color: 'var(--text)',
+                      fontSize: '13px',
+                      cursor: 'pointer',
+                      outline: 'none',
+                      minWidth: '180px'
+                    }}
+                  >
+                    <option value="">All Departments</option>
+                    {uniqueDepartments.map((dept) => (
+                      <option key={dept} value={dept}>{dept}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
             </div>
-          </header>
 
-          <JobList
-            jobs={jobs}
-            onSelectJob={handleSelectJob}
-            onCreateJobClick={() => setIsNewJobModalOpen(true)}
-            isLoading={jobsLoading}
-          />
-        </div>
+            <div className="applicants-section" style={{ marginTop: '24px' }}>
+              {error && (
+                <div className="error-banner" style={{ marginBottom: '16px' }}>
+                  <strong>Error:</strong> {error}
+                </div>
+              )}
+              
+              {allApplicantsLoading ? (
+                <div className="applicants-loading">
+                  <span className="loading-spinner" />
+                  <p>Loading candidate list...</p>
+                </div>
+              ) : filteredAllApplicants.length === 0 ? (
+                <div className="empty-applicants">
+                  <p>No candidates match the selected criteria.</p>
+                </div>
+              ) : (
+                <div className="table-wrapper">
+                  <table className="applicants-table">
+                    <thead>
+                      <tr>
+                        <th style={{ width: '45px', textAlign: 'center' }}>⚑</th>
+                        <th>Candidate</th>
+                        <th>Position</th>
+                        <th>Department</th>
+                        <th>Score</th>
+                        <th>Filename</th>
+                        <th>Date Screened</th>
+                        <th>Best Alternate Fit</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredAllApplicants.map((app) => {
+                        const scoreClass = app.match_score >= 80 ? 'excellent' : app.match_score >= 60 ? 'good' : 'poor';
+                        return (
+                          <tr
+                            key={app.id}
+                            className="applicant-row"
+                            onClick={() => handleSelectApplicant(app)}
+                          >
+                            <td onClick={(e) => e.stopPropagation()} style={{ textAlign: 'center' }}>
+                              <button
+                                type="button"
+                                className={`list-flag-btn ${app.is_reviewed ? 'flagged' : ''}`}
+                                onClick={() => handleToggleReview(app)}
+                                title={app.is_reviewed ? "Marked as Reviewed" : "Mark as Reviewed"}
+                              >
+                                ⚑
+                              </button>
+                            </td>
+                            <td>
+                              <div className="candidate-name-cell">
+                                {app.name || 'Unknown Candidate'}
+                                {app.is_reviewed && (
+                                  <span className="reviewed-checkmark-badge" title="Manually Audited & Reviewed">
+                                    ✓ Reviewed
+                                  </span>
+                                )}
+                              </div>
+                              <div className="candidate-email-cell">{app.email}</div>
+                            </td>
+                            <td style={{ fontWeight: '500' }}>{app.job_title || 'Unknown Position'}</td>
+                            <td>
+                              <span className="badge" style={{ backgroundColor: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)' }}>
+                                {app.job_department || '—'}
+                              </span>
+                            </td>
+                            <td>
+                              <span className={`score-badge-pill ${scoreClass}`}>
+                                {app.match_score}%
+                              </span>
+                            </td>
+                            <td>{app.resume_filename}</td>
+                            <td>{ensureUtcDate(app.created_at).toLocaleDateString()}</td>
+                            <td onClick={(e) => e.stopPropagation()}>
+                              {app.best_alternative_job_title ? (
+                                <button
+                                  type="button"
+                                  className={`alt-match-pill-btn ${app.best_alternative_is_screened ? 'screened' : ''}`}
+                                  title="View alternative position match details"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setAltMatchModalData(app);
+                                  }}
+                                >
+                                  💼 Different Match
+                                </button>
+                              ) : (
+                                <span style={{ color: 'var(--text-muted)' }}>—</span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </div>
+        ) : (
+          // Jobs Dashboard view
+          <div className="app-content">
+            <header className="app-header">
+              <div className="header-content">
+                <h1>Smart Resume Screener</h1>
+                <p>Post job positions and screen candidate resumes using AI analytics.</p>
+              </div>
+            </header>
+
+            <JobList
+              jobs={jobs}
+              onSelectJob={handleSelectJob}
+              onCreateJobClick={() => setIsNewJobModalOpen(true)}
+              onViewAllCandidatesClick={handleViewAllCandidates}
+              isLoading={jobsLoading}
+            />
+          </div>
+        )
       ) : (
         // Job Details and Candidates view
         <div className="job-details-container">
@@ -1397,7 +1620,7 @@ function App() {
         onSwitchToApplicant={handleSwitchToJobApplicant}
         token={token}
         apiUrl={API_URL}
-        jobId={activeJob ? activeJob.id : null}
+        jobId={activeJob ? activeJob.id : (activeApplicant ? activeApplicant.job_id : null)}
       />
 
       <EmailTemplateDrawer
