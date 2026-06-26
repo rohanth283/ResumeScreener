@@ -6,36 +6,39 @@
   box-sizing: border-box;
 }
 
-:root {
-  /* Google/Material Design 3 Light Color System */
-  --bg: #F8F9FA;
+:root, [data-theme='light'] {
+  /* Slate-based TA Dashboard Light Theme Palette */
+  --bg: #F8FAFC;
   --surface: #FFFFFF;
-  --surface-hover: #F1F3F4;
-  --surface-elevated: #FFFFFF;
-  --border: #DADCE0;
-  --text: #202124;
-  --text-muted: #5F6368;
-  --accent: #1A73E8;
-  --accent-hover: #1557B0;
-  --accent-light: #E8F0FE;
+  --surface-hover: #F1F5F9;
+  --surface-elevated: #F1F5F9;
+  --border: #E2E8F0;
   
-  --success: #188038;
-  --success-light: #E6F4EA;
-  --warning: #F9AB00;
-  --warning-light: #FEF7E0;
-  --danger: #D93025;
-  --danger-light: #FCE8E6;
+  --text: #0F172A;
+  --text-muted: #475569;
+  --text-disabled: #94A3B8;
   
-  --radius: 8px;
+  --accent: #2563EB;
+  --accent-hover: #1D4ED8;
+  --accent-light: #EFF6FF;
+  
+  --success: #065F46;
+  --success-light: #D1FAE5;
+  --warning: #92400E;
+  --warning-light: #FEF3C7;
+  --danger: #991B1B;
+  --danger-light: #FEE2E2;
+  
+  --radius: 6px;
   
   /* Material-style Shadows */
-  --shadow-sm: 0 1px 2px 0 rgba(60,64,67,0.3), 0 1px 3px 1px rgba(60,64,67,0.15);
-  --shadow-md: 0 1px 3px 0 rgba(60,64,67,0.3), 0 4px 8px 3px rgba(60,64,67,0.15);
+  --shadow-sm: 0 1px 2px 0 rgba(15, 23, 42, 0.05), 0 1px 3px 1px rgba(15, 23, 42, 0.1);
+  --shadow-md: 0 4px 6px -1px rgba(15, 23, 42, 0.1), 0 2px 4px -1px rgba(15, 23, 42, 0.06);
 }
 
 body {
   margin: 0;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
   background: var(--bg);
   color: var(--text);
   line-height: 1.5;
@@ -48,27 +51,31 @@ body {
   min-height: 100vh;
 }
 
-[data-theme='dark'] {
-  --bg: #121212;
-  --surface: #1E1F20;
-  --surface-hover: #2D2E30;
-  --surface-elevated: #2A2B2D;
-  --border: #3C4043;
-  --text: #E8EAED;
-  --text-muted: #9AA0A6;
-  --accent: #8AB4F8;
-  --accent-hover: #AECBFA;
-  --accent-light: rgba(138, 180, 248, 0.15);
+[data-theme='dark'], .dark {
+  /* Slate-based TA Dashboard Dark Theme Palette */
+  --bg: #0F172A;
+  --surface: #1E293B;
+  --surface-hover: #334155;
+  --surface-elevated: #334155;
+  --border: rgba(51, 65, 85, 0.5);
   
-  --success: #81C995;
-  --success-light: rgba(129, 201, 149, 0.15);
-  --warning: #FDD663;
-  --warning-light: rgba(253, 214, 99, 0.15);
-  --danger: #F28B82;
-  --danger-light: rgba(242, 139, 130, 0.15);
+  --text: #F8FAFC;
+  --text-muted: #94A3B8;
+  --text-disabled: #64748B;
+  
+  --accent: #3B82F6;
+  --accent-hover: #60A5FA;
+  --accent-light: rgba(59, 130, 246, 0.15);
+  
+  --success: #34D399;
+  --success-light: #065F46;
+  --warning: #FBBF24;
+  --warning-light: #78350F;
+  --danger: #FCA5A5;
+  --danger-light: #7F1D1D;
 
-  --shadow-sm: 0 1px 2px 0 rgba(0,0,0,0.5), 0 1px 3px 1px rgba(0,0,0,0.3);
-  --shadow-md: 0 1px 3px 0 rgba(0,0,0,0.5), 0 4px 8px 3px rgba(0,0,0,0.3);
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3), 0 1px 3px 1px rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.5), 0 2px 4px -1px rgba(0, 0, 0, 0.3);
 }
 
 .theme-toggle-btn {
@@ -96,4 +103,73 @@ body {
   background: var(--surface-hover);
   transform: scale(1.05);
 }
+
+/* Typography scale classes */
+.text-xs { font-size: 12px !important; }
+.text-sm { font-size: 14px !important; }
+.text-base { font-size: 16px !important; }
+.text-lg { font-size: 20px !important; }
+.text-xl { font-size: 24px !important; }
+
+/* Global Typography & Hierarchy mapping */
+body, table, td, th {
+  font-size: 14px;
+}
+h1, .page-header {
+  font-size: 24px !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.02em !important;
+}
+h2, .card-title {
+  font-size: 20px !important;
+  font-weight: 600 !important;
+  letter-spacing: -0.01em !important;
+}
+h3 {
+  font-size: 16px !important;
+  font-weight: 600 !important;
+}
+input, select, textarea, label {
+  font-size: 16px !important;
+}
+.tag, .badge, .caption, .timestamp {
+  font-size: 12px !important;
+}
+
+/* 8px Spacing Grid System & Dense Padding */
+.form-group {
+  margin-bottom: 16px !important; /* 2 * 8px */
+}
+input, select, textarea {
+  padding: 8px 12px !important; /* 8px vertical padding for density */
+  border-radius: var(--radius) !important;
+}
+.submit-btn, .btn, button {
+  border-radius: var(--radius) !important;
+}
+.login-card, .card, .modal-content {
+  border-radius: var(--radius) !important;
+  padding: 24px !important; /* Tightened for density */
+}
+
+/* Table Alternating Rows (Light Mode) vs. Flat Lines (Dark Mode) */
+:root:not([data-theme='dark']) .applicant-row:nth-child(even),
+[data-theme='light'] .applicant-row:nth-child(even) {
+  background-color: #F8FAFC !important;
+}
+:root:not([data-theme='dark']) .applicant-row:nth-child(odd),
+[data-theme='light'] .applicant-row:nth-child(odd) {
+  background-color: #FFFFFF !important;
+}
+
+[data-theme='dark'] .applicant-row,
+.dark .applicant-row {
+  background-color: var(--surface) !important;
+  border-bottom: 1px solid var(--border) !important;
+}
+[data-theme='dark'] .applicant-row:hover,
+.dark .applicant-row:hover {
+  background-color: var(--surface-hover) !important;
+}
+
 
