@@ -324,19 +324,19 @@
 .score-badge-pill.excellent {
   background: var(--success-light);
   color: var(--success);
-  border: 1px solid rgba(24, 128, 56, 0.2);
+  border: 1px solid var(--success-border);
 }
 
 .score-badge-pill.good {
   background: var(--warning-light);
-  color: #B06000;
-  border: 1px solid rgba(249, 171, 0, 0.2);
+  color: var(--warning);
+  border: 1px solid var(--warning-border);
 }
 
 .score-badge-pill.poor {
   background: var(--danger-light);
   color: var(--danger);
-  border: 1px solid rgba(217, 48, 37, 0.2);
+  border: 1px solid var(--danger-border);
 }
 
 .empty-applicants {
