@@ -142,22 +142,25 @@
 }
 
 .back-link {
-  background: transparent;
-  border: none;
-  color: var(--accent);
-  font-size: 14px;
-  font-weight: 600;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 500;
   cursor: pointer;
-  padding: 0;
+  padding: 8px 16px;
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  transition: color 0.2s ease;
+  transition: all 0.2s ease;
   width: fit-content;
 }
 
 .back-link:hover {
-  color: var(--accent-hover);
+  background: var(--surface-hover);
+  color: var(--text);
+  box-shadow: var(--shadow-sm);
 }
 
 .details-header h2 {
