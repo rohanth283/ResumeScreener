@@ -7,16 +7,16 @@
 }
 
 :root, [data-theme='light'] {
-  /* Slate-based TA Dashboard Light Theme Palette */
-  --bg: #F8FAFC;
+  /* Neutral Gray-based TA Dashboard Light Theme Palette */
+  --bg: #F5F5F5;
   --surface: #FFFFFF;
-  --surface-hover: #F1F5F9;
-  --surface-elevated: #F1F5F9;
-  --border: #E2E8F0;
+  --surface-hover: #E5E5E5;
+  --surface-elevated: #E5E5E5;
+  --border: #E0E0E0;
   
-  --text: #0F172A;
-  --text-muted: #475569;
-  --text-disabled: #94A3B8;
+  --text: #171717;
+  --text-muted: #525252;
+  --text-disabled: #A3A3A3;
   
   --accent: #2563EB;
   --accent-hover: #1D4ED8;
@@ -32,8 +32,8 @@
   --radius: 6px;
   
   /* Material-style Shadows */
-  --shadow-sm: 0 1px 2px 0 rgba(15, 23, 42, 0.05), 0 1px 3px 1px rgba(15, 23, 42, 0.1);
-  --shadow-md: 0 4px 6px -1px rgba(15, 23, 42, 0.1), 0 2px 4px -1px rgba(15, 23, 42, 0.06);
+  --shadow-sm: 0 1px 2px 0 rgba(23, 23, 23, 0.05), 0 1px 3px 1px rgba(23, 23, 23, 0.08);
+  --shadow-md: 0 4px 6px -1px rgba(23, 23, 23, 0.08), 0 2px 4px -1px rgba(23, 23, 23, 0.05);
 }
 
 body {
@@ -52,16 +52,16 @@ body {
 }
 
 [data-theme='dark'], .dark {
-  /* Slate-based TA Dashboard Dark Theme Palette */
-  --bg: #0F172A;
-  --surface: #1E293B;
-  --surface-hover: #334155;
-  --surface-elevated: #334155;
-  --border: rgba(51, 65, 85, 0.5);
+  /* Standard Neutral Gray Dark Theme Palette */
+  --bg: #121212;
+  --surface: #1E1E1E;
+  --surface-hover: #2D2D2D;
+  --surface-elevated: #2D2D2D;
+  --border: #333333;
   
-  --text: #F8FAFC;
-  --text-muted: #94A3B8;
-  --text-disabled: #64748B;
+  --text: #EDEDED;
+  --text-muted: #A3A3A3;
+  --text-disabled: #737373;
   
   --accent: #3B82F6;
   --accent-hover: #60A5FA;
@@ -74,8 +74,8 @@ body {
   --danger: #FCA5A5;
   --danger-light: #7F1D1D;
 
-  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3), 0 1px 3px 1px rgba(0, 0, 0, 0.2);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.5), 0 2px 4px -1px rgba(0, 0, 0, 0.3);
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.4), 0 1px 3px 1px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.6), 0 2px 4px -1px rgba(0, 0, 0, 0.4);
 }
 
 .theme-toggle-btn {
@@ -155,7 +155,7 @@ input, select, textarea {
 /* Table Alternating Rows (Light Mode) vs. Flat Lines (Dark Mode) */
 :root:not([data-theme='dark']) .applicant-row:nth-child(even),
 [data-theme='light'] .applicant-row:nth-child(even) {
-  background-color: #F8FAFC !important;
+  background-color: #F5F5F5 !important;
 }
 :root:not([data-theme='dark']) .applicant-row:nth-child(odd),
 [data-theme='light'] .applicant-row:nth-child(odd) {
