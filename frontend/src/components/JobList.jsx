@@ -59,11 +59,9 @@ export default function JobList({ jobs, onSelectJob, onCreateJobClick, onViewAll
             onClick={() => onSelectJob(job)}
           >
             <div className="job-card-top">
-              <div className="job-card-title-row">
-                <h3>{job.title}</h3>
-                <span className="badge status-ongoing">Ongoing</span>
-              </div>
+              <h3>{job.title}</h3>
               <div className="job-badges">
+                <span className="badge status-ongoing">Ongoing</span>
                 {job.department && <span className="badge">{job.department}</span>}
                 {job.location && <span className="badge">{job.location}</span>}
                 {job.employment_type && (
@@ -108,11 +106,9 @@ export default function JobList({ jobs, onSelectJob, onCreateJobClick, onViewAll
                 onClick={() => onSelectJob(job)}
               >
                 <div className="job-card-top">
-                  <div className="job-card-title-row">
-                    <h3>{job.title}</h3>
-                    <span className="badge status-completed">Completed</span>
-                  </div>
+                  <h3>{job.title}</h3>
                   <div className="job-badges">
+                    <span className="badge status-completed">Completed</span>
                     {job.department && <span className="badge">{job.department}</span>}
                     {job.location && <span className="badge">{job.location}</span>}
                     {job.employment_type && (
