@@ -1,4 +1,5 @@
 import time
+import uuid
 from locust import HttpUser, task, between
 
 # Sample resume text for load testing
@@ -20,7 +21,8 @@ class RecruiterSimulationUser(HttpUser):
 
     def on_start(self):
         """Executed when a virtual user starts: registers and logs in."""
-        self.email = f"locust_recruiter_{int(time.time() * 1000)}@example.com"
+        unique_id = uuid.uuid4().hex[:8]
+        self.email = f"locust_recruiter_{unique_id}_{int(time.time() * 1000)}@example.com"
         self.password = "Secr3tPassword!"
         
         # 1. Sign up user
@@ -81,8 +83,9 @@ class RecruiterSimulationUser(HttpUser):
         }
         
         # Pass a randomized candidate email to avoid duplicate update database locks during test run
+        unique_candidate_id = uuid.uuid4().hex[:8]
         form_data = {
-            "email": f"locust_candidate_{int(time.time() * 1000)}@example.com"
+            "email": f"locust_candidate_{unique_candidate_id}_{int(time.time() * 1000)}@example.com"
         }
         
         self.client.post(

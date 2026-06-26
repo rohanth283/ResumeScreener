@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { GoogleLogin } from '@react-oauth/google';
+import { EyeIcon, EyeOffIcon } from './Icons';
 import './Login.css';
 
 export default function Login({ apiBaseUrl, onAuthSuccess }) {
@@ -10,6 +11,7 @@ export default function Login({ apiBaseUrl, onAuthSuccess }) {
   const [error, setError] = useState(null);
   const [successMessage, setSuccessMessage] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleEmailAuth = async (e) => {
     e.preventDefault();
@@ -205,14 +207,24 @@ export default function Login({ apiBaseUrl, onAuthSuccess }) {
                   </button>
                 )}
               </div>
-              <input
-                id="auth-password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                required
-              />
+              <div className="input-wrapper">
+                <input
+                  id="auth-password"
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  required
+                />
+                <button
+                  type="button"
+                  className="password-toggle-btn"
+                  onClick={() => setShowPassword(!showPassword)}
+                  title={showPassword ? "Hide password" : "Show password"}
+                >
+                  {showPassword ? <EyeOffIcon size={20} /> : <EyeIcon size={20} />}
+                </button>
+              </div>
             </div>
 
             <button type="submit" className="submit-btn" disabled={loading}>
