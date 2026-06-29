@@ -102,6 +102,13 @@ export default function Login({ apiBaseUrl, onAuthSuccess }) {
     }
   };
 
+  const handleInputKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      e.currentTarget.form?.requestSubmit();
+    }
+  };
+
   return (
     <div className="login-page">
       <div className="login-card">
@@ -147,6 +154,7 @@ export default function Login({ apiBaseUrl, onAuthSuccess }) {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                onKeyDown={handleInputKeyDown}
                 placeholder="you@example.com"
                 required
                 disabled={loading}
@@ -176,6 +184,7 @@ export default function Login({ apiBaseUrl, onAuthSuccess }) {
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
+                  onKeyDown={handleInputKeyDown}
                   placeholder="John Doe"
                   required
                 />
@@ -189,6 +198,7 @@ export default function Login({ apiBaseUrl, onAuthSuccess }) {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                onKeyDown={handleInputKeyDown}
                 placeholder="you@example.com"
                 required
               />
@@ -213,13 +223,19 @@ export default function Login({ apiBaseUrl, onAuthSuccess }) {
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  onKeyDown={handleInputKeyDown}
                   placeholder="••••••••"
                   required
                 />
                 <button
                   type="button"
                   className="password-toggle-btn"
-                  onClick={() => setShowPassword(!showPassword)}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setShowPassword(!showPassword);
+                    // Retain focus on password input so Enter key still triggers form submit
+                    document.getElementById('auth-password')?.focus();
+                  }}
                   title={showPassword ? "Hide password" : "Show password"}
                 >
                   {showPassword ? <EyeOffIcon size={20} /> : <EyeIcon size={20} />}
