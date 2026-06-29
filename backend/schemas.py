@@ -75,6 +75,7 @@ class ApplicantResponse(BaseModel):
     improvements: List[str]
     skills_matched: List[str]
     skills_missing: List[str]
+    screening_raw: Optional[dict] = None
     is_reviewed: Optional[bool] = False
     has_resume_pdf: bool = False
     best_alternative_job_title: Optional[str] = None

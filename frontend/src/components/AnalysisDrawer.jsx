@@ -195,71 +195,312 @@ export default function AnalysisDrawer({ isOpen, onClose, applicant, onRescreen,
                   <strong>AI-Generated Evaluation:</strong> This report was compiled by AI to assist the screening process. Please conduct a manual review before making final candidate decisions.
                 </div>
               </div>
-              {/* Evaluation Summary */}
-              <div className="detail-block">
-                <h5>Evaluation Summary</h5>
-                {Array.isArray(applicant.summary) ? (
-                  <ul className="drawer-list summary-list">
-                    {applicant.summary.map((pt, idx) => (
-                      <li key={idx}>{pt}</li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p>{applicant.summary}</p>
-                )}
-              </div>
+              {applicant.screening_raw ? (
+                (() => {
+                  const raw = applicant.screening_raw;
+                  const subScores = raw.scores || {};
+                  const deductions = raw.deductions || [];
+                  const rec = raw.recommendation || 'Potential Match';
+                  
+                  // Map recommendation to dynamic color classes
+                  let recClass = 'consider';
+                  if (rec.includes('Strong') || rec.includes('Recommended')) recClass = 'strong';
+                  else if (rec.includes('Reject') || rec.includes('Weak')) recClass = 'reject';
+                  
+                  return (
+                    <div className="enterprise-report">
+                      {/* Overall Decision Banner */}
+                      <div className={`decision-banner ${recClass}`}>
+                        <div className="decision-title-row">
+                          <span className="decision-label">Recommendation Decision</span>
+                          <span className="decision-badge">{rec}</span>
+                        </div>
+                        <p className="decision-reason">{raw.decision_reasoning || raw.summary_text || ''}</p>
+                      </div>
 
-              {/* Matched Skills */}
-              <div className="detail-block">
-                <h5>Matched Skills</h5>
-                {applicant.skills_matched && applicant.skills_matched.length > 0 ? (
-                  <div className="skills-badge-container">
-                    {applicant.skills_matched.map((skill, idx) => (
-                      <span key={idx} className="skill-badge matched">
-                        {skill}
-                      </span>
-                    ))}
+                      {/* Weighted Scoring Rubric Breakdown */}
+                      <div className="detail-block">
+                        <h5>Weighted Rubric Scores</h5>
+                        <div className="sub-scores-grid">
+                          <div className="score-row">
+                            <div className="score-row-meta">
+                              <span>Technical Skills Match (40%)</span>
+                              <strong>{subScores.skills || 0}/100</strong>
+                            </div>
+                            <div className="score-progress-bar-bg">
+                              <div className="score-progress-bar-fill skills" style={{ width: `${subScores.skills || 0}%` }}></div>
+                            </div>
+                          </div>
+
+                          <div className="score-row">
+                            <div className="score-row-meta">
+                              <span>Relevant Experience (25%)</span>
+                              <strong>{subScores.experience || 0}/100</strong>
+                            </div>
+                            <div className="score-progress-bar-bg">
+                              <div className="score-progress-bar-fill experience" style={{ width: `${subScores.experience || 0}%` }}></div>
+                            </div>
+                          </div>
+
+                          <div className="score-row">
+                            <div className="score-row-meta">
+                              <span>Education Fit (10%)</span>
+                              <strong>{subScores.education || 0}/100</strong>
+                            </div>
+                            <div className="score-progress-bar-bg">
+                              <div className="score-progress-bar-fill education" style={{ width: `${subScores.education || 0}%` }}></div>
+                            </div>
+                          </div>
+
+                          <div className="score-row">
+                            <div className="score-row-meta">
+                              <span>Projects Relevance (10%)</span>
+                              <strong>{subScores.projects || 0}/100</strong>
+                            </div>
+                            <div className="score-progress-bar-bg">
+                              <div className="score-progress-bar-fill projects" style={{ width: `${subScores.projects || 0}%` }}></div>
+                            </div>
+                          </div>
+
+                          <div className="score-row">
+                            <div className="score-row-meta">
+                              <span>Certifications Match (5%)</span>
+                              <strong>{subScores.certifications || 0}/100</strong>
+                            </div>
+                            <div className="score-progress-bar-bg">
+                              <div className="score-progress-bar-fill certifications" style={{ width: `${subScores.certifications || 0}%` }}></div>
+                            </div>
+                          </div>
+
+                          <div className="score-row">
+                            <div className="score-row-meta">
+                              <span>Industry Alignment (10%)</span>
+                              <strong>{subScores.industry_alignment || 0}/100</strong>
+                            </div>
+                            <div className="score-progress-bar-bg">
+                              <div className="score-progress-bar-fill alignment" style={{ width: `${subScores.industry_alignment || 0}%` }}></div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Side-by-side Experience & Education Comparison */}
+                      <div className="comparison-grid">
+                        <div className="comparison-card">
+                          <h6>Experience Required</h6>
+                          <p>{raw.experience_required || 'No experience requirements specified.'}</p>
+                        </div>
+                        <div className="comparison-card">
+                          <h6>Candidate Experience</h6>
+                          <p>{raw.experience_candidate || 'No experience details extracted.'}</p>
+                        </div>
+                      </div>
+
+                      {/* Education Match Info */}
+                      <div className="detail-block">
+                        <div className="edu-match-row">
+                          <span>Education Credentials Fit:</span>
+                          <span className={`edu-match-tag ${raw.education_match?.toLowerCase() || 'poor'}`}>
+                            {raw.education_match || 'Not Evaluated'}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Skills Section */}
+                      <div className="detail-block">
+                        <h5>Matched Skills</h5>
+                        {raw.matched_skills && raw.matched_skills.length > 0 ? (
+                          <div className="skills-badge-container">
+                            {raw.matched_skills.map((skill, idx) => (
+                              <span key={idx} className="skill-badge matched">
+                                {skill}
+                              </span>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="no-skills-msg">No matched skills identified.</p>
+                        )}
+                      </div>
+
+                      {raw.related_skills_found && raw.related_skills_found.length > 0 && (
+                        <div className="detail-block">
+                          <h5>Related/Partial Matching Skills</h5>
+                          <div className="skills-badge-container">
+                            {raw.related_skills_found.map((skill, idx) => (
+                              <span key={idx} className="skill-badge partial">
+                                {skill}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="detail-block">
+                        <h5>Missing Skills</h5>
+                        {raw.missing_skills && raw.missing_skills.length > 0 ? (
+                          <div className="skills-badge-container">
+                            {raw.missing_skills.map((skill, idx) => (
+                              <span key={idx} className="skill-badge missing">
+                                {skill}
+                              </span>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="no-skills-msg">No missing skills identified.</p>
+                        )}
+                      </div>
+
+                      {/* Key Projects & Certifications */}
+                      <div className="grid-two-columns">
+                        <div className="detail-block">
+                          <h5>Key Projects Extracted</h5>
+                          {raw.key_projects && raw.key_projects.length > 0 ? (
+                            <ul className="drawer-list project-list">
+                              {raw.key_projects.map((proj, idx) => (
+                                <li key={idx}>{proj}</li>
+                              ))}
+                            </ul>
+                          ) : (
+                            <p className="no-items-msg">No projects highlighted.</p>
+                          )}
+                        </div>
+
+                        <div className="detail-block">
+                          <h5>Certifications Found</h5>
+                          {raw.certifications_found && raw.certifications_found.length > 0 ? (
+                            <ul className="drawer-list cert-list">
+                              {raw.certifications_found.map((cert, idx) => (
+                                <li key={idx}>{cert}</li>
+                              ))}
+                            </ul>
+                          ) : (
+                            <p className="no-items-msg">No certifications found.</p>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Strengths & Concerns */}
+                      <div className="detail-block">
+                        <h5>Key Strengths</h5>
+                        <ul className="drawer-list strengths-list">
+                          {(raw.strengths || []).map((str, idx) => (
+                            <li key={idx}>{str}</li>
+                          ))}
+                        </ul>
+                      </div>
+
+                      {raw.concerns && raw.concerns.length > 0 && (
+                        <div className="detail-block">
+                          <h5>Concerns</h5>
+                          <ul className="drawer-list concerns-list">
+                            {raw.concerns.map((con, idx) => (
+                              <li key={idx}>{con}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+
+                      {/* Deductions Panel */}
+                      {deductions.length > 0 && (
+                        <div className="detail-block">
+                          <h5>Deductions Applied</h5>
+                          <div className="deductions-container">
+                            {deductions.map((ded, idx) => (
+                              <div key={idx} className="deduction-item-row">
+                                <span className="deduction-reason-text">{ded.reason}</span>
+                                <span className="deduction-points-badge">-{ded.points_lost} pts</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Recommended Interview Questions */}
+                      {raw.interview_questions && raw.interview_questions.length > 0 && (
+                        <div className="detail-block interview-questions-section">
+                          <h5>Recommended Interview Questions</h5>
+                          <div className="questions-list-container">
+                            {raw.interview_questions.map((q, idx) => (
+                              <div key={idx} className="question-card">
+                                <span className="question-number">Q{idx + 1}</span>
+                                <p className="question-text">{q}</p>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()
+              ) : (
+                <>
+                  {/* Evaluation Summary */}
+                  <div className="detail-block">
+                    <h5>Evaluation Summary</h5>
+                    {Array.isArray(applicant.summary) ? (
+                      <ul className="drawer-list summary-list">
+                        {applicant.summary.map((pt, idx) => (
+                          <li key={idx}>{pt}</li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p>{applicant.summary}</p>
+                    )}
                   </div>
-                ) : (
-                  <p className="no-skills-msg">No matched skills identified.</p>
-                )}
-              </div>
 
-              {/* Missing Skills */}
-              <div className="detail-block">
-                <h5>Missing Skills</h5>
-                {applicant.skills_missing && applicant.skills_missing.length > 0 ? (
-                  <div className="skills-badge-container">
-                    {applicant.skills_missing.map((skill, idx) => (
-                      <span key={idx} className="skill-badge missing">
-                        {skill}
-                      </span>
-                    ))}
+                  {/* Matched Skills */}
+                  <div className="detail-block">
+                    <h5>Matched Skills</h5>
+                    {applicant.skills_matched && applicant.skills_matched.length > 0 ? (
+                      <div className="skills-badge-container">
+                        {applicant.skills_matched.map((skill, idx) => (
+                          <span key={idx} className="skill-badge matched">
+                            {skill}
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="no-skills-msg">No matched skills identified.</p>
+                    )}
                   </div>
-                ) : (
-                  <p className="no-skills-msg">No missing skills identified.</p>
-                )}
-              </div>
 
-              {/* Strengths */}
-              <div className="detail-block">
-                <h5>Strengths</h5>
-                <ul className="drawer-list strengths-list">
-                  {applicant.strengths.map((str, idx) => (
-                    <li key={idx}>{str}</li>
-                  ))}
-                </ul>
-              </div>
+                  {/* Missing Skills */}
+                  <div className="detail-block">
+                    <h5>Missing Skills</h5>
+                    {applicant.skills_missing && applicant.skills_missing.length > 0 ? (
+                      <div className="skills-badge-container">
+                        {applicant.skills_missing.map((skill, idx) => (
+                          <span key={idx} className="skill-badge missing">
+                            {skill}
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="no-skills-msg">No missing skills identified.</p>
+                    )}
+                  </div>
 
-              {/* Gaps / Areas to Improve */}
-              <div className="detail-block">
-                <h5>Gaps / Areas to Improve</h5>
-                <ul className="drawer-list improvements-list">
-                  {applicant.improvements.map((imp, idx) => (
-                    <li key={idx}>{imp}</li>
-                  ))}
-                </ul>
-              </div>
+                  {/* Strengths */}
+                  <div className="detail-block">
+                    <h5>Strengths</h5>
+                    <ul className="drawer-list strengths-list">
+                      {applicant.strengths.map((str, idx) => (
+                        <li key={idx}>{str}</li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  {/* Gaps / Areas to Improve */}
+                  <div className="detail-block">
+                    <h5>Gaps / Areas to Improve</h5>
+                    <ul className="drawer-list improvements-list">
+                      {applicant.improvements.map((imp, idx) => (
+                        <li key={idx}>{imp}</li>
+                      ))}
+                    </ul>
+                  </div>
+                </>
+              )}
 
               {/* Alternative Positions Match */}
               <div className="detail-block alternative-positions-block">

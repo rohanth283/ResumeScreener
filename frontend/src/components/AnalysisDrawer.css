@@ -709,3 +709,306 @@
   display: inline-block;
 }
 
+/* Enterprise scoring panel custom styling */
+.enterprise-report {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  box-sizing: border-box;
+}
+
+.decision-banner {
+  padding: 18px;
+  border-radius: 12px;
+  border-left: 5px solid;
+  margin-bottom: 4px;
+  box-sizing: border-box;
+}
+
+.decision-banner.strong {
+  border-left-color: var(--success);
+  background: var(--success-light);
+  color: var(--success);
+}
+
+.decision-banner.consider {
+  border-left-color: var(--warning);
+  background: var(--warning-light);
+  color: #B06000;
+}
+
+.decision-banner.reject {
+  border-left-color: var(--danger);
+  background: var(--danger-light);
+  color: var(--danger);
+}
+
+.decision-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.decision-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  opacity: 0.85;
+}
+
+.decision-badge {
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.decision-reason {
+  font-size: 14px;
+  line-height: 1.5;
+  margin: 0;
+  color: var(--text);
+}
+
+.sub-scores-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 4px;
+}
+
+.score-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.score-row-meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.score-progress-bar-bg {
+  width: 100%;
+  height: 8px;
+  background: var(--border);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.score-progress-bar-fill {
+  height: 100%;
+  border-radius: 999px;
+}
+
+.score-progress-bar-fill.skills {
+  background: var(--accent);
+}
+
+.score-progress-bar-fill.experience {
+  background: var(--success);
+}
+
+.score-progress-bar-fill.education {
+  background: #8B5CF6;
+}
+
+.score-progress-bar-fill.projects {
+  background: #EC4899;
+}
+
+.score-progress-bar-fill.certifications {
+  background: #F59E0B;
+}
+
+.score-progress-bar-fill.alignment {
+  background: #10B981;
+}
+
+.comparison-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-top: 4px;
+}
+
+.comparison-card {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  box-sizing: border-box;
+}
+
+.comparison-card h6 {
+  margin: 0 0 6px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.comparison-card p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text);
+  line-height: 1.5;
+}
+
+.edu-match-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.edu-match-tag {
+  font-size: 12px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 6px;
+  text-transform: capitalize;
+  line-height: 1;
+}
+
+.edu-match-tag.excellent,
+.edu-match-tag.good {
+  background: var(--success-light);
+  color: var(--success);
+  border: 1px solid rgba(24, 128, 56, 0.15);
+}
+
+.edu-match-tag.partial {
+  background: var(--warning-light);
+  color: #B06000;
+  border: 1px solid rgba(249, 171, 0, 0.15);
+}
+
+.edu-match-tag.poor {
+  background: var(--danger-light);
+  color: var(--danger);
+  border: 1px solid rgba(217, 48, 37, 0.15);
+}
+
+.skill-badge.partial {
+  background: var(--warning-light);
+  color: #B06000;
+  border-color: rgba(249, 171, 0, 0.2);
+}
+
+.grid-two-columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.no-items-msg,
+.no-skills-msg {
+  font-size: 13px;
+  color: var(--text-muted);
+  font-style: italic;
+  margin: 0;
+}
+
+.drawer-list.concerns-list li::before {
+  content: '⚠';
+  color: var(--danger);
+  font-size: 15px;
+}
+
+.drawer-list.project-list li::before {
+  content: '✦';
+  color: var(--accent);
+  font-size: 14px;
+}
+
+.drawer-list.cert-list li::before {
+  content: '★';
+  color: #F59E0B;
+  font-size: 14px;
+}
+
+.deductions-container {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+}
+
+.deduction-item-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.deduction-reason-text {
+  font-size: 13px;
+  color: var(--text);
+  line-height: 1.4;
+}
+
+.deduction-points-badge {
+  background: var(--danger-light);
+  color: var(--danger);
+  font-weight: 700;
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  border: 1px solid rgba(217, 48, 37, 0.15);
+  white-space: nowrap;
+}
+
+.interview-questions-section {
+  border-top: 1px solid var(--border);
+  padding-top: 24px;
+  margin-top: 8px;
+}
+
+.questions-list-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.question-card {
+  display: flex;
+  gap: 12px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  align-items: flex-start;
+  box-sizing: border-box;
+}
+
+.question-number {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--accent);
+  background: var(--accent-light);
+  padding: 3px 6px;
+  border-radius: 4px;
+  line-height: 1;
+}
+
+.question-text {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text);
+  line-height: 1.5;
+}
+
+

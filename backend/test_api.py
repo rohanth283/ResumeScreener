@@ -38,20 +38,46 @@ def setup_db():
     Base.metadata.create_all(bind=engine)
     yield
 
-# Mock the screen_resume function to avoid calling Google Gemini API during tests
 @pytest.fixture(autouse=True)
 def mock_screen_resume():
     original_screen_resume = main.screen_resume
     async def mock_fn(jd, text, priority_skills=""):
+        score = 85 if not priority_skills else 95
         return {
+            # Legacy keys
             "candidate_name": "John Doe",
             "candidate_email": "john.doe@example.com",
-            "match_score": 85 if not priority_skills else 95,
+            "match_score": score,
             "summary": ["Mocked bullet point 1.", "Mocked bullet point 2.", "Mocked bullet point 3."],
             "strengths": ["Skill A", "Skill B", "Skill C"],
             "improvements": ["Learn Skill D", "Learn Skill E", "Learn Skill F"],
             "skills_matched": ["FastAPI", "React"],
-            "skills_missing": ["Python"]
+            "skills_missing": ["Python"],
+            
+            # New keys
+            "overall_score": score,
+            "recommendation": "Good Match" if score == 85 else "Strong Match",
+            "scores": {
+                "skills": score,
+                "experience": score,
+                "education": score,
+                "projects": score,
+                "certifications": score,
+                "industry_alignment": score
+            },
+            "matched_skills": ["FastAPI", "React"],
+            "missing_skills": ["Python"],
+            "related_skills_found": [],
+            "experience_required": "2+ years",
+            "experience_candidate": "3 years",
+            "education_match": "Good",
+            "concerns": ["Learn Skill D", "Learn Skill E", "Learn Skill F"],
+            "key_projects": [],
+            "certifications_found": [],
+            "deductions": [{"reason": "Missing Python skill", "points_lost": 15}],
+            "summary_text": "Mocked bullet point 1.",
+            "decision_reasoning": "Reasoning details.",
+            "interview_questions": ["Q1", "Q2", "Q3"]
         }
     main.screen_resume = mock_fn
     yield
@@ -425,7 +451,35 @@ def test_screen_duplicate_applicants():
             "candidate_name": "No Email Candidate",
             "candidate_email": "unknown@example.com",
             "match_score": 50,
-            "summary": [], "strengths": [], "improvements": [], "skills_matched": [], "skills_missing": []
+            "summary": ["No email candidate summary."],
+            "strengths": ["None"],
+            "improvements": ["None"],
+            "skills_matched": [],
+            "skills_missing": [],
+            
+            "overall_score": 50,
+            "recommendation": "Reject",
+            "scores": {
+                "skills": 50,
+                "experience": 50,
+                "education": 50,
+                "projects": 50,
+                "certifications": 50,
+                "industry_alignment": 50
+            },
+            "matched_skills": [],
+            "missing_skills": [],
+            "related_skills_found": [],
+            "experience_required": "None",
+            "experience_candidate": "None",
+            "education_match": "Poor",
+            "concerns": [],
+            "key_projects": [],
+            "certifications_found": [],
+            "deductions": [],
+            "summary_text": "No email candidate summary.",
+            "decision_reasoning": "Rejecting candidate.",
+            "interview_questions": ["Q1", "Q2", "Q3"]
         }
     main.screen_resume = mock_unknown_email_fn
 

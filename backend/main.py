@@ -75,6 +75,9 @@ def run_migrations():
                 if "resume_embedding" not in columns:
                     conn.execute(text("ALTER TABLE applicants ADD COLUMN resume_embedding JSON"))
                     print("MIGRATION: Added resume_embedding column to applicants table.")
+                if "screening_raw" not in columns:
+                    conn.execute(text("ALTER TABLE applicants ADD COLUMN screening_raw JSON"))
+                    print("MIGRATION: Added screening_raw column to applicants table.")
 
             if "scheduled_emails" in table_names:
                 columns = [c["name"] for c in inspector.get_columns("scheduled_emails")]
@@ -700,6 +703,7 @@ async def screen_applicant_resume(
             existing_applicant.skills_matched = screening_res["skills_matched"]
             existing_applicant.skills_missing = screening_res["skills_missing"]
             existing_applicant.resume_embedding = resume_emb
+            existing_applicant.screening_raw = screening_res
             existing_applicant.created_at = func.now() # update timestamp to show latest screening date
             
             db.commit()
@@ -721,7 +725,8 @@ async def screen_applicant_resume(
                 improvements=screening_res["improvements"],
                 skills_matched=screening_res["skills_matched"],
                 skills_missing=screening_res["skills_missing"],
-                resume_embedding=resume_emb
+                resume_embedding=resume_emb,
+                screening_raw=screening_res
             )
             db.add(applicant)
             db.commit()
@@ -819,6 +824,7 @@ async def rescreen_applicant_resume(
         applicant.skills_matched = screening_res["skills_matched"]
         applicant.skills_missing = screening_res["skills_missing"]
         applicant.resume_embedding = resume_emb
+        applicant.screening_raw = screening_res
         
         db.commit()
         db.refresh(applicant)
@@ -1422,6 +1428,7 @@ async def transfer_screen_candidate(
         existing_target.skills_matched = screening_res["skills_matched"]
         existing_target.skills_missing = screening_res["skills_missing"]
         existing_target.resume_embedding = resume_emb
+        existing_target.screening_raw = screening_res
         existing_target.created_at = func.now()
         
         db.commit()
@@ -1443,7 +1450,8 @@ async def transfer_screen_candidate(
             improvements=screening_res["improvements"],
             skills_matched=screening_res["skills_matched"],
             skills_missing=screening_res["skills_missing"],
-            resume_embedding=resume_emb
+            resume_embedding=resume_emb,
+            screening_raw=screening_res
         )
         db.add(new_applicant)
         db.commit()
