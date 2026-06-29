@@ -1312,7 +1312,7 @@ function App() {
               </button>
               <button
                 type="button"
-                className="btn-secondary"
+                className="btn-destructive"
                 onClick={() => handleDeleteJob(activeJob.id)}
               >
                 Delete Position

@@ -50,18 +50,17 @@
   border-radius: 12px;
   padding: 24px;
   cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   display: flex;
   flex-direction: column;
   justify-content: space-between;
   min-height: 200px;
   box-sizing: border-box;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  box-shadow: var(--shadow-sm);
 }
 
 .job-card:hover {
-  transform: translateY(-4px);
-  background: var(--surface);
+  transform: translateY(-3px);
   border-color: var(--accent);
   box-shadow: var(--shadow-md);
 }
@@ -187,12 +186,14 @@
   min-height: 200px;
   text-align: center;
   box-shadow: none;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .job-card.create-card:hover {
   border-color: var(--accent);
   background: var(--surface-hover);
-  transform: translateY(-4px);
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-sm);
 }
 
 .create-card-content {
